@@ -1,0 +1,42 @@
+# Dépendances
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Artefacts de build Svelte
+.svelte-kit/
+build/
+dist/
+
+# Fichiers d'IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+Thumbs.db
+
+# Variables d'environnement
+.env
+.env.local
+.env.*.local
+
+# Fichiers temporaires et de cache
+*.log
+*.tmp
+.cache/
+.parcel-cache/
+
+# Vite
+.vite/
+
+# macOS
+.AppleDouble
+.LSOverlay
+.Spotlight-V100
+
+# Fichiers de test de couverture
+coverage/
+.nyc_output/

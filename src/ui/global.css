@@ -1,0 +1,107 @@
+/*
+ * Styles globaux.
+ *
+ * Aucune police n'est embarquée (C8) : on s'en tient à la pile système, ce qui
+ * garde le fichier léger et le rendu familier sur Windows comme sur macOS.
+ */
+
+:root {
+  --encre: #1b1f23;
+  --encre-douce: #57606a;
+  --fond: #ffffff;
+  --fond-doux: #f6f7f9;
+  --trait: #d6dae0;
+  --accent: #1f5fa9;
+  --alerte: #a4262c;
+  --alerte-fond: #fdf1f1;
+  --ok: #1a7f4b;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  color: var(--encre);
+  background: var(--fond);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--trait);
+  border-radius: 4px;
+  background: var(--fond);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--fond-doux);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.principal {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.principal:hover:not(:disabled) {
+  background: #1a5091;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--trait);
+  border-radius: 4px;
+  background: var(--fond);
+}
+
+label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--encre-douce);
+}
+
+/* La saisie au clavier vise un poste fixe ou portable (C9) : pas de mise en page mobile. */
+
+/*
+ * Impression — §2.6. La mise en page du bulletin vit dans `Bulletin.svelte` ;
+ * on ne règle ici que le format de page et l'effacement de l'interface.
+ *
+ * Rappel de la notice (C7) : décocher « En-têtes et pieds de page » dans la
+ * boîte d'impression, sans quoi l'URL du fichier et la date s'impriment.
+ */
+@page {
+  size: A4 portrait;
+  margin: 12mm 14mm;
+}
+
+@media print {
+  :root {
+    font-size: 12px;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
