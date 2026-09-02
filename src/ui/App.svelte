@@ -109,20 +109,33 @@
 <main>
   {#if !fichier}
     <section class="accueil">
-      <h1>Ouvrir une classe, ou en créer une</h1>
+      <h1>Par quoi commencer ?</h1>
       <p>
         Ce fichier est l'<em>application</em>. Les données de chaque classe vivent dans un
         fichier <code>.json</code> distinct, à conserver sur le Drive de l'école. Ne les confondez
         jamais : l'application se remplace à chaque mise à jour, les classes non.
       </p>
 
-      <form onsubmit={creer}>
-        <label>Classe <input bind:value={nomClasse} placeholder="4e A" required /></label>
-        <label>Année scolaire <input bind:value={libelleAnnee} placeholder="2025-2026" /></label>
-        <label>École <input bind:value={ecole} placeholder="Momignies" /></label>
-        <label>Titulaire <input bind:value={titulaire} /></label>
-        <button class="principal" type="submit">Créer la classe</button>
-      </form>
+      <div class="choix">
+        <div class="carte">
+          <h2>Ouvrir une classe existante</h2>
+          <p>Reprendre le travail sur un fichier <code>.json</code> déjà enregistré sur le Drive.</p>
+          <button class="principal" onclick={() => champFichier?.click()}>
+            Choisir un fichier…
+          </button>
+        </div>
+
+        <div class="carte">
+          <h2>Créer une nouvelle classe</h2>
+          <form onsubmit={creer}>
+            <label>Classe <input bind:value={nomClasse} placeholder="4e A" required /></label>
+            <label>Année scolaire <input bind:value={libelleAnnee} placeholder="2025-2026" /></label>
+            <label>École <input bind:value={ecole} placeholder="Momignies" /></label>
+            <label>Titulaire <input bind:value={titulaire} /></label>
+            <button class="principal" type="submit">Créer la classe</button>
+          </form>
+        </div>
+      </div>
     </section>
   {:else}
     <nav class="periodes no-print">
@@ -281,16 +294,50 @@
   }
 
   .accueil {
-    max-width: 46rem;
+    max-width: 52rem;
   }
 
   .accueil h1 {
     font-size: 1.2rem;
   }
 
-  .accueil p {
+  .accueil > p {
     color: var(--encre-douce);
     line-height: 1.5;
+  }
+
+  .choix {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+    align-items: start;
+  }
+
+  .carte {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 1.2rem;
+    border: 1px solid var(--trait);
+    border-radius: 8px;
+    background: var(--fond-doux);
+  }
+
+  .carte h2 {
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .carte p {
+    margin: 0;
+    color: var(--encre-douce);
+    line-height: 1.4;
+    font-size: 0.9rem;
+  }
+
+  .carte .principal {
+    align-self: flex-start;
   }
 
   form {
