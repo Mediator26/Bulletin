@@ -78,7 +78,17 @@ label {
   color: var(--encre-douce);
 }
 
-/* La saisie au clavier vise un poste fixe ou portable (C9) : pas de mise en page mobile. */
+/*
+ * C9 ne porte que sur la grille de saisie au clavier (`EcranSaisie` /
+ * `Grille.svelte`) : pas utilisable sur tablette ou téléphone, à assumer,
+ * pas à corriger. Le reste de l'application — structure générale, bulletins,
+ * réglages — s'adapte aux petits écrans ci-dessous.
+ */
+@media (max-width: 480px) {
+  :root {
+    font-size: 14px;
+  }
+}
 
 /*
  * Impression — §2.6. La mise en page du bulletin vit dans `Bulletin.svelte` ;

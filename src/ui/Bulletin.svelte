@@ -35,42 +35,44 @@
       </div>
     </header>
 
-    <table>
-      <thead>
-        <tr>
-          <th scope="col" class="col-rubrique">Rubrique</th>
-          <th scope="col" class="col-note">Période {bulletin.periode.numero}</th>
-          <th scope="col" class="col-note">Maximum</th>
-          <th scope="col" class="col-note">Moyenne annuelle</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each bulletin.lignes as ligne (ligne.rubrique_id)}
-          <tr class:principale={ligne.niveau === 0} class:sous-rubrique={ligne.niveau > 0}>
-            <th scope="row" style="padding-left: {0.5 + ligne.niveau * 1.2}rem">{ligne.libelle}</th>
-            {#if ligne.type === 'echelle'}
-              <td class="echelle" colspan="3">
-                {#each ECHELLE as cote (cote)}
-                  <span class="cote" class:retenue={ligne.cotation === cote}>{cote}</span>
-                {/each}
-              </td>
-            {:else}
-              <td class="note">{afficherScore(ligne.score)}</td>
-              <td class="note maximum">{ligne.maximum}</td>
-              <td class="note">{afficherScore(ligne.moyenne)}</td>
-            {/if}
+    <div class="tableau-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" class="col-rubrique">Rubrique</th>
+            <th scope="col" class="col-note">Période {bulletin.periode.numero}</th>
+            <th scope="col" class="col-note">Maximum</th>
+            <th scope="col" class="col-note">Moyenne annuelle</th>
           </tr>
-        {/each}
-      </tbody>
-      <tfoot>
-        <tr>
-          <th scope="row">Total</th>
-          <td class="note">{afficherScore(bulletin.total)}</td>
-          <td class="note maximum">{bulletin.totalMaximum}</td>
-          <td class="note"></td>
-        </tr>
-      </tfoot>
-    </table>
+        </thead>
+        <tbody>
+          {#each bulletin.lignes as ligne (ligne.rubrique_id)}
+            <tr class:principale={ligne.niveau === 0} class:sous-rubrique={ligne.niveau > 0}>
+              <th scope="row" style="padding-left: {0.5 + ligne.niveau * 1.2}rem">{ligne.libelle}</th>
+              {#if ligne.type === 'echelle'}
+                <td class="echelle" colspan="3">
+                  {#each ECHELLE as cote (cote)}
+                    <span class="cote" class:retenue={ligne.cotation === cote}>{cote}</span>
+                  {/each}
+                </td>
+              {:else}
+                <td class="note">{afficherScore(ligne.score)}</td>
+                <td class="note maximum">{ligne.maximum}</td>
+                <td class="note">{afficherScore(ligne.moyenne)}</td>
+              {/if}
+            </tr>
+          {/each}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">Total</th>
+            <td class="note">{afficherScore(bulletin.total)}</td>
+            <td class="note maximum">{bulletin.totalMaximum}</td>
+            <td class="note"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
 
     <p class="legende">
       « — » signale une rubrique dont aucun test n'a été présenté : elle ne compte pas dans le
@@ -143,6 +145,10 @@
   .nom {
     font-weight: 700;
     font-size: 0.95rem;
+  }
+
+  .tableau-scroll {
+    overflow-x: auto;
   }
 
   table {
@@ -278,6 +284,51 @@
 
     thead {
       display: table-header-group;
+    }
+
+    .tableau-scroll {
+      overflow: visible;
+    }
+  }
+
+  @media screen and (max-width: 700px) {
+    .page {
+      padding: 6mm 5mm;
+    }
+
+    header {
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .identite {
+      text-align: left;
+    }
+
+    table {
+      font-size: 0.75rem;
+    }
+
+    th,
+    td {
+      padding: 0.16rem 0.3rem;
+    }
+
+    .col-note {
+      width: auto;
+      min-width: 3.4rem;
+    }
+
+    .signatures {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.4rem;
+      margin-top: 10mm;
+    }
+
+    .signatures > div {
+      width: 100%;
+      text-align: left;
     }
   }
 </style>

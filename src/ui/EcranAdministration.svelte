@@ -124,45 +124,47 @@
 
   <section>
     <h2>Périodes</h2>
-    <table class="tableau">
-      <thead>
-        <tr>
-          <th scope="col">Période</th>
-          <th scope="col">Date du bulletin</th>
-          <th scope="col">Tests encodés</th>
-          <th scope="col"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each fichier.periodes as periode (periode.id)}
+    <div class="tabla-scroll">
+      <table class="tableau">
+        <thead>
           <tr>
-            <td>Période {periode.numero}</td>
-            <td>
-              <input
-                type="date"
-                value={periode.date_bulletin}
-                onchange={(e) => {
-                  periode.date_bulletin = (e.currentTarget as HTMLInputElement).value;
-                  onModification();
-                }}
-              />
-            </td>
-            <td class="nombre">
-              {fichier.tests.filter((t) => t.periode_id === periode.id).length}
-            </td>
-            <td>
-              <button
-                class="danger"
-                disabled={fichier.periodes.length <= 1}
-                onclick={() => retirerPeriode(periode.id, periode.numero)}
-              >
-                Supprimer
-              </button>
-            </td>
+            <th scope="col">Période</th>
+            <th scope="col">Date du bulletin</th>
+            <th scope="col">Tests encodés</th>
+            <th scope="col"></th>
           </tr>
-        {/each}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {#each fichier.periodes as periode (periode.id)}
+            <tr>
+              <td>Période {periode.numero}</td>
+              <td>
+                <input
+                  type="date"
+                  value={periode.date_bulletin}
+                  onchange={(e) => {
+                    periode.date_bulletin = (e.currentTarget as HTMLInputElement).value;
+                    onModification();
+                  }}
+                />
+              </td>
+              <td class="nombre">
+                {fichier.tests.filter((t) => t.periode_id === periode.id).length}
+              </td>
+              <td>
+                <button
+                  class="danger"
+                  disabled={fichier.periodes.length <= 1}
+                  onclick={() => retirerPeriode(periode.id, periode.numero)}
+                >
+                  Supprimer
+                </button>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
     <button
       onclick={() => {
         ajouterPeriode(fichier);
@@ -188,19 +190,20 @@
       </ul>
     {/if}
 
-    <table class="tableau">
-      <thead>
-        <tr>
-          <th scope="col">Rubrique</th>
-          <th scope="col">Maximum</th>
-          <th scope="col">Cotation</th>
-          <th scope="col">Tests</th>
-          <th scope="col">Ordre</th>
-          <th scope="col"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each aplat as { rubrique, niveau } (rubrique.id)}
+    <div class="tabla-scroll">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th scope="col">Rubrique</th>
+            <th scope="col">Maximum</th>
+            <th scope="col">Cotation</th>
+            <th scope="col">Tests</th>
+            <th scope="col">Ordre</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each aplat as { rubrique, niveau } (rubrique.id)}
           {@const branche = enfantsDe(fichier.rubriques, rubrique.id).length > 0}
           <tr class:principale={niveau === 0}>
             <td style="padding-left: {0.5 + niveau * 1.3}rem">
@@ -279,8 +282,9 @@
             </td>
           </tr>
         {/each}
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
 
     <form class="ajout" onsubmit={creerRubrique}>
       <label>
@@ -327,10 +331,14 @@
     gap: 0.8rem;
   }
 
+  .tabla-scroll {
+    overflow-x: auto;
+    margin-bottom: 0.7rem;
+  }
+
   .tableau {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 0.7rem;
     font-size: 0.85rem;
   }
 
@@ -417,5 +425,21 @@
     margin: 0.35rem 0 0;
     color: var(--encre-douce);
     font-size: 0.78rem;
+  }
+
+  @media (max-width: 700px) {
+    .champs {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .champs label input {
+      width: 100%;
+    }
+
+    .ajout {
+      flex-direction: column;
+      align-items: stretch;
+    }
   }
 </style>

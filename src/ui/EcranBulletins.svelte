@@ -254,4 +254,18 @@
       padding: 0;
     }
   }
+
+  @media (max-width: 780px) {
+    .ecran {
+      grid-template-columns: 1fr;
+    }
+
+    .liste {
+      max-height: 40vh;
+    }
+
+    .apercu {
+      padding: 0.6rem;
+    }
+  }
 </style>

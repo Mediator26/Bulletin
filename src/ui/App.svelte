@@ -433,4 +433,41 @@
     max-width: 5rem;
   }
 
+  @media (max-width: 720px) {
+    header {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .actions {
+      flex-wrap: wrap;
+    }
+
+    main {
+      padding: 0.75rem;
+    }
+
+    .choix {
+      grid-template-columns: 1fr;
+    }
+
+    .periodes {
+      flex-wrap: wrap;
+    }
+
+    .vues {
+      width: 100%;
+      margin-right: 0;
+      padding-right: 0;
+      padding-bottom: 0.5rem;
+      border-right: 0;
+      border-bottom: 1px solid var(--trait);
+    }
+
+    .periodes .date {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+
 </style>
