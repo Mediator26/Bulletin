@@ -119,6 +119,15 @@ function cheminOrdre(rubrique: Rubrique, rubriques: readonly Rubrique[]): string
   return segments.join('.');
 }
 
+/**
+ * Séparateur des segments d'un chemin de rubrique.
+ *
+ * Exporté pour que l'interface puisse redécouper un chemin sans réinventer la
+ * convention — l'écran de saisie affiche les parents en gris et la feuille en
+ * gras, et ce découpage doit suivre `cheminLibelle` si elle change.
+ */
+export const SEPARATEUR_CHEMIN = ' › ';
+
 /** Libellé complet d'une rubrique, parents compris : « Français › Lire-écrire ». */
 export function cheminLibelle(rubrique: Rubrique, rubriques: readonly Rubrique[]): string {
   const segments: string[] = [];
@@ -128,5 +137,5 @@ export function cheminLibelle(rubrique: Rubrique, rubriques: readonly Rubrique[]
     const parent: Id | null = courante.parent_id;
     courante = parent === null ? undefined : rubriques.find((r) => r.id === parent);
   }
-  return segments.join(' › ');
+  return segments.join(SEPARATEUR_CHEMIN);
 }

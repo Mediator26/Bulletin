@@ -5,6 +5,13 @@
   entièrement décrite en CSS `@page` / `@media print` : l'export PDF est le
   « Imprimer → Enregistrer au format PDF » du navigateur, sans aucune
   bibliothèque. Ce composant ne calcule rien, il parcourt `domaine/bulletin.ts`.
+
+  Mise en forme : c'est le seul écran qui sort de l'application et arrive chez
+  des parents. Il ne suit donc pas la palette de l'interface mais les variables
+  `--papier-*`, qui restent noir sur blanc y compris en thème sombre — l'aperçu
+  montre la feuille, pas l'application. Le tableau abandonne le quadrillage
+  complet pour des filets horizontaux : sur papier, une grille pleine alourdit
+  la lecture, alors que la ligne d'une rubrique se suit très bien seule.
 -->
 <script lang="ts">
   import { afficherDate, afficherScore, type Bulletin } from '../domaine/bulletin.js';
@@ -24,14 +31,15 @@
   <!-- Recto -->
   <section class="page">
     <header>
-      <div>
-        <h1>Bulletin — Période {bulletin.periode.numero}</h1>
+      <div class="entete-titre">
+        <p class="sur-titre">Bulletin scolaire</p>
+        <h1>Période {bulletin.periode.numero}</h1>
         <p class="etablissement">{enTete}</p>
       </div>
       <div class="identite">
         <p class="nom">{bulletin.eleve.nom} {bulletin.eleve.prenom}</p>
-        <p>{bulletin.eleve.annee_etude}<sup>e</sup> année</p>
-        {#if dateBulletin}<p>Le {dateBulletin}</p>{/if}
+        <p class="annee">{bulletin.eleve.annee_etude}<sup>e</sup> année</p>
+        {#if dateBulletin}<p class="date">Le {dateBulletin}</p>{/if}
       </div>
     </header>
 
@@ -96,46 +104,68 @@
 
 <style>
   .bulletin {
-    color: #000;
+    color: var(--papier-encre);
   }
 
   .page {
-    background: #fff;
+    background: var(--papier);
     padding: 12mm 14mm;
-    margin: 0 auto 1rem;
+    margin: 0 auto;
     max-width: 210mm;
-    border: 1px solid var(--trait);
+    border-radius: 2px;
+    box-shadow: var(--ombre-2);
+  }
+
+  .page + .page {
+    margin-top: var(--e5);
   }
 
   header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 1rem;
-    border-bottom: 2px solid #000;
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.8rem;
+    gap: var(--e5);
+    border-bottom: 1.5pt solid var(--papier-encre);
+    padding-bottom: var(--e3);
+    margin-bottom: var(--e5);
+  }
+
+  /* Le sur-titre porte le nom du document, le titre porte la période : c'est la
+     période qu'on cherche des yeux quand trois bulletins sont posés côte à côte. */
+  .sur-titre {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--papier-douce);
   }
 
   h1 {
-    font-size: 1.05rem;
-    margin: 0;
+    font-size: 1.35rem;
+    margin: 0.1rem 0 0;
+    letter-spacing: -0.015em;
   }
 
   h2 {
     font-size: 1rem;
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--e3);
   }
 
   .etablissement {
-    margin: 0.15rem 0 0;
-    font-size: 0.8rem;
-    color: #444;
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+    color: var(--papier-douce);
   }
 
   .identite {
+    flex: none;
+    max-width: 45%;
+    padding-left: var(--e4);
+    border-left: 1px solid var(--papier-trait);
     text-align: right;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
+    color: var(--papier-douce);
   }
 
   .identite p {
@@ -143,14 +173,27 @@
   }
 
   .nom {
+    color: var(--papier-encre);
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  .annee {
+    margin-top: 0.1rem;
+  }
+
+  .date {
+    margin-top: 0.25rem;
+    font-variant-numeric: tabular-nums;
   }
 
   .tableau-scroll {
     overflow-x: auto;
   }
 
+  /* Filets horizontaux seulement : la ligne d'une rubrique se suit sans qu'on
+     ait besoin d'enfermer chaque nombre dans une case. */
   table {
     width: 100%;
     border-collapse: collapse;
@@ -159,14 +202,20 @@
 
   th,
   td {
-    border: 1px solid #999;
-    padding: 0.22rem 0.45rem;
+    border: 0;
+    border-bottom: 0.5pt solid var(--papier-trait);
+    padding: 0.3rem 0.5rem;
     text-align: left;
   }
 
   thead th {
-    background: #eee;
-    font-size: 0.75rem;
+    border-bottom: 1pt solid var(--papier-encre);
+    padding-bottom: 0.2rem;
+    color: var(--papier-douce);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .col-note {
@@ -180,27 +229,38 @@
   }
 
   .maximum {
-    color: #666;
+    color: var(--papier-douce);
   }
 
+  /* Rubrique principale : le nom en gras et un filet d'appui au-dessus, plutôt
+     qu'un aplat gris — moins d'encre, une hiérarchie plus nette. */
   tr.principale > th {
     font-weight: 700;
-    background: #f4f4f4;
+    font-size: 0.86rem;
+  }
+
+  tr.principale > th,
+  tr.principale > td {
+    border-top: 0.5pt solid var(--papier-trait);
+    padding-top: 0.34rem;
   }
 
   tr.principale > .note {
     font-weight: 700;
-    background: #f4f4f4;
   }
 
   tr.sous-rubrique > th {
     font-weight: 400;
+    color: var(--papier-douce);
   }
 
   tfoot th,
   tfoot td {
+    border-top: 1pt solid var(--papier-encre);
+    border-bottom: 0;
+    padding-top: 0.4rem;
     font-weight: 700;
-    background: #e6e6e6;
+    font-size: 0.9rem;
   }
 
   .echelle {
@@ -209,44 +269,49 @@
 
   .cote {
     display: inline-block;
-    min-width: 1.6rem;
+    min-width: 1.7rem;
     margin-left: 0.2rem;
-    padding: 0 0.2rem;
-    border: 1px solid #bbb;
+    padding: 0.05rem 0.2rem;
+    border: 0.5pt solid var(--papier-trait);
     border-radius: 3px;
     text-align: center;
-    color: #999;
-    font-size: 0.75rem;
+    color: var(--papier-trait);
+    font-size: 0.72rem;
+    font-weight: 600;
   }
 
   .cote.retenue {
-    border-color: #000;
-    background: #000;
-    color: #fff;
-    font-weight: 700;
+    border-color: var(--papier-encre);
+    background: var(--papier-encre);
+    color: var(--papier);
   }
 
   .legende {
-    margin-top: 0.6rem;
-    font-size: 0.68rem;
-    color: #555;
-    line-height: 1.35;
+    margin-top: var(--e4);
+    padding-top: var(--e3);
+    border-top: 0.5pt solid var(--papier-trait);
+    font-size: 0.66rem;
+    color: var(--papier-douce);
+    line-height: 1.4;
   }
 
   .commentaire {
     min-height: 60mm;
-    border: 1px solid #999;
-    padding: 0.5rem;
+    border: 0.5pt solid var(--papier-trait);
+    border-radius: 2px;
+    padding: var(--e4);
     font-size: 0.85rem;
+    line-height: 1.5;
     white-space: pre-wrap;
   }
 
   .signatures {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--e5);
     margin-top: 18mm;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
+    color: var(--papier-douce);
   }
 
   .signatures > div {
@@ -256,8 +321,8 @@
 
   .ligne-signature {
     display: block;
-    border-top: 1px solid #000;
-    margin-bottom: 0.25rem;
+    border-top: 0.5pt solid var(--papier-encre);
+    margin-bottom: 0.3rem;
   }
 
   /*
@@ -267,10 +332,16 @@
   @media print {
     .page {
       border: 0;
+      border-radius: 0;
+      box-shadow: none;
       padding: 0;
       margin: 0;
       max-width: none;
       break-after: page;
+    }
+
+    .page + .page {
+      margin-top: 0;
     }
 
     .bulletin {
@@ -298,10 +369,13 @@
 
     header {
       flex-wrap: wrap;
-      gap: 0.6rem;
+      gap: var(--e3);
     }
 
     .identite {
+      max-width: none;
+      padding-left: 0;
+      border-left: 0;
       text-align: left;
     }
 
@@ -311,7 +385,7 @@
 
     th,
     td {
-      padding: 0.16rem 0.3rem;
+      padding: 0.2rem 0.3rem;
     }
 
     .col-note {

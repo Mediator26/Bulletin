@@ -6,6 +6,15 @@
   Toute la logique de déplacement vit dans `domaine/navigation.ts` et la
   validation dans `domaine/validation.ts` ; ce composant ne fait que relier
   le clavier, le DOM et les mutations.
+
+  Mise en forme : la grille se lit comme un tableur, mais elle doit rester lisible
+  à la trace du regard. Trois choix en découlent :
+    · `border-collapse: separate` — les bordures fusionnées disparaissent sous
+      les cellules figées dès qu'on défile horizontalement ; séparées, elles tiennent ;
+    · la ligne en cours de saisie est teintée (`:has(input:focus)`), pour ne pas
+      encoder la note d'un élève dans la ligne du voisin ;
+    · « abs » et « disp » sont des pastilles, pas du texte : un statut ne se
+      confond pas avec une note.
 -->
 <script lang="ts">
   import type { Eleve, FichierClasse, Statut, Test } from '../domaine/modele.js';
@@ -39,6 +48,14 @@
     if (resultat.statut === 'absent') return 'abs';
     if (resultat.statut === 'dispense') return 'disp';
     return resultat.valeur === null ? '' : String(resultat.valeur).replace('.', ',');
+  }
+
+  /** Statut affiché, pour teinter la cellule : un statut n'est pas une note. */
+  function statutDe(test: Test, eleve: Eleve): Statut | null {
+    const resultat = resultatDe(fichier, test.id, eleve.id);
+    return resultat?.statut === 'absent' || resultat?.statut === 'dispense'
+      ? resultat.statut
+      : null;
   }
 
   function saisir(evenement: Event, ligne: number, colonne: number): void {
@@ -117,7 +134,10 @@
 </script>
 
 {#if tests.length === 0}
-  <p class="vide">Aucun test encodé pour cette rubrique dans cette période.</p>
+  <p class="vide">
+    Aucun test encodé pour cette rubrique dans cette période.
+    <span>Ajoutez-en un avec le champ ci-dessus.</span>
+  </p>
 {:else}
   <div class="cadre">
     <table>
@@ -126,8 +146,10 @@
           <th class="entete-eleve" scope="col">Élève</th>
           {#each tests as test, colonne (test.id)}
             <th scope="col">
-              <span class="libelle">{test.libelle}</span>
-              <span class="max">/ {test.maximum}</span>
+              <span class="titre-test">
+                <span class="libelle" title={test.libelle}>{test.libelle}</span>
+                <span class="max">/ {test.maximum}</span>
+              </span>
               <button
                 class="supprimer"
                 title="Supprimer ce test et ses résultats"
@@ -148,7 +170,8 @@
             <th class="entete-eleve" scope="row">{eleve.nom} {eleve.prenom}</th>
             {#each tests as test, colonne (test.id)}
               {@const erreur = erreurs[cle(ligne, colonne)]}
-              <td class:erreur={erreur}>
+              {@const statut = statutDe(test, eleve)}
+              <td class:erreur={erreur} class:absent={statut === 'absent'} class:dispense={statut === 'dispense'}>
                 <input
                   id={idCellule({ ligne, colonne }, zone)}
                   value={affichage(test, eleve)}
@@ -175,34 +198,56 @@
 {/if}
 
 <style>
+  /* Le cadre est la fenêtre de défilement horizontal : c'est lui qui fige la
+     colonne des noms quand la rubrique compte plus de tests que d'écran. */
   .cadre {
     overflow: auto;
-    border: 1px solid var(--trait);
-    border-radius: 6px;
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    background: var(--surface);
   }
 
   table {
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     width: max-content;
     min-width: 100%;
   }
 
   th,
   td {
-    border: 1px solid var(--trait);
+    border-right: 1px solid var(--trait);
+    border-bottom: 1px solid var(--trait);
     padding: 0;
+  }
+
+  th:last-child,
+  td:last-child {
+    border-right: 0;
+  }
+
+  tbody tr:last-child th,
+  tbody tr:last-child td {
+    border-bottom: 0;
   }
 
   thead th {
     position: sticky;
     top: 0;
     z-index: 2;
-    background: var(--fond-doux);
-    padding: 0.35rem 0.5rem;
+    background: var(--surface-douce);
+    padding: 0.4rem 0.55rem;
     text-align: left;
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.02em;
     white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  .titre-test {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
   }
 
   .libelle {
@@ -214,36 +259,64 @@
   }
 
   .max {
-    color: var(--encre-douce);
-    font-weight: 400;
+    color: var(--encre-tenue);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
   }
 
   .supprimer {
+    margin-left: var(--e1);
     border: 0;
     background: none;
+    box-shadow: none;
     padding: 0 0.2rem;
-    color: var(--encre-douce);
+    color: var(--encre-tenue);
+    font-size: var(--t-md);
     line-height: 1;
   }
 
-  .supprimer:hover {
+  .supprimer:hover:not(:disabled) {
+    background: var(--alerte-fond);
     color: var(--alerte);
-    background: none;
   }
 
   .entete-eleve {
     position: sticky;
     left: 0;
     z-index: 1;
-    background: var(--fond-doux);
+    background: var(--surface-douce);
     padding: 0.3rem 0.6rem;
     text-align: left;
-    font-weight: 500;
+    font-size: var(--t-md);
+    font-weight: 550;
     white-space: nowrap;
+  }
+
+  /* La colonne figée doit rester détachée des notes qui glissent dessous : une
+     bordure suffit tant qu'on ne défile pas, une ombre porte le relief ensuite. */
+  tbody .entete-eleve {
+    box-shadow: 1px 0 0 var(--trait);
   }
 
   thead .entete-eleve {
     z-index: 3;
+    box-shadow: 1px 0 0 var(--trait);
+  }
+
+  /* Repère de ligne : encoder vingt-cinq élèves sur six colonnes sans jamais
+     glisser d'une ligne à l'autre est le seul vrai risque de la saisie. */
+  tbody tr:hover td {
+    background: var(--surface-douce);
+  }
+
+  tbody tr:has(input:focus) td {
+    background: var(--accent-doux);
+  }
+
+  tbody tr:has(input:focus) .entete-eleve {
+    background: var(--accent-doux);
+    color: var(--accent-fort);
+    font-weight: 700;
   }
 
   /* La cellule entière est la zone de saisie : l'input occupe toute la case,
@@ -253,34 +326,96 @@
     display: block;
     box-sizing: border-box;
     width: 100%;
-    min-width: 5.5rem;
+    min-width: 4.75rem;
     height: 100%;
     border: 0;
     border-radius: 0;
-    padding: 0.3rem 0.4rem;
+    padding: 0.32rem 0.5rem;
     text-align: right;
+    font-variant-numeric: tabular-nums;
     background: transparent;
   }
 
-  input:focus {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
-    background: #eef4fc;
+  input:hover:not(:disabled) {
+    border: 0;
   }
 
-  td.erreur {
+  input:focus,
+  input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    box-shadow: none;
+    border-radius: 0;
+    background: var(--surface);
+    font-weight: 650;
+  }
+
+  /* Absent et dispensé : deux statuts distincts, tous deux hors du prorata
+     (défaut n° 8 du classeur). Ils se lisent au premier coup d'œil, sans être
+     pris pour des notes. */
+  td.absent input,
+  td.dispense input {
+    text-align: center;
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  td.absent input {
+    color: var(--attention);
+  }
+
+  td.absent {
+    background: var(--attention-fond);
+  }
+
+  td.dispense input {
+    color: var(--encre-tenue);
+  }
+
+  td.dispense {
+    background: var(--surface-appuyee);
+  }
+
+  /* Une saisie refusée ne disparaît pas : elle reste à l'écran, signalée, pour
+     être corrigée plutôt que retapée. */
+  td.erreur,
+  tbody tr:hover td.erreur,
+  tbody tr:has(input:focus) td.erreur {
     background: var(--alerte-fond);
+    box-shadow: inset 2px 0 0 var(--alerte);
+  }
+
+  td.erreur input {
+    color: var(--alerte);
+    font-weight: 650;
   }
 
   .messages-erreur {
-    margin: 0.5rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: var(--e2);
+    margin: 0;
+    padding: var(--e3) var(--e4);
+    border-top: 1px solid var(--alerte);
+    background: var(--alerte-fond);
     color: var(--alerte);
-    font-size: 0.85rem;
+    font-size: var(--t-sm);
+    font-weight: 550;
   }
 
+  /* Une rubrique sans test tient sur une ligne. Au début d'une période, elles le
+     sont presque toutes : un encadré vide par rubrique ferait de l'écran de
+     saisie une page de vide à faire défiler avant d'atteindre le premier
+     tableau. */
   .vide {
-    margin: 0.6rem 0 0;
-    color: var(--encre-douce);
-    font-size: 0.82rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e1) var(--e2);
+    margin: 0;
+    padding: var(--e3) var(--e4);
+    color: var(--encre-tenue);
+    font-size: var(--t-sm);
   }
 </style>

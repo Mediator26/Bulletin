@@ -5,12 +5,19 @@
   Le nommage du PDF passe par `document.title` (§2.6) : le navigateur le
   propose comme nom de fichier, ce qui donne « Bulletin-P2-Martin-Léa.pdf »
   sans aucune bibliothèque.
+
+  Mise en forme : trois panneaux à gauche — qui, quoi imprimer, et le verso à
+  remplir — et l'aperçu à droite posé sur un fond sourd, pour que la feuille
+  blanche se lise comme une feuille et non comme le fond de l'application.
+  L'aperçu garde son papier blanc même en thème sombre : c'est ce qui sortira
+  de l'imprimante.
 -->
 <script lang="ts">
   import { construireBulletin, titrePdf } from '../domaine/bulletin.js';
   import { definirCommentaire, definirCotation } from '../domaine/mutations.js';
   import { ECHELLE, type Echelle, type Eleve, type FichierClasse, type Id } from '../domaine/modele.js';
   import BulletinImprimable from './Bulletin.svelte';
+  import ListeEleves from './ListeEleves.svelte';
 
   interface Props {
     fichier: FichierClasse;
@@ -69,36 +76,42 @@
 
 <div class="ecran">
   <aside class="no-print">
-    <div class="choix">
-      <label class="classe-entiere">
-        <input type="checkbox" bind:checked={touteLaClasse} />
-        Imprimer toute la classe ({eleves.length})
-      </label>
+    <section class="panneau">
+      <h3>Élève</h3>
+      <ListeEleves
+        {eleves}
+        selectionId={eleveActif?.id ?? null}
+        onSelection={(id) => (eleveChoisi = id)}
+        vide="Aucun élève à imprimer."
+      />
+    </section>
 
-      <ul class="liste">
-        {#each eleves as eleve (eleve.id)}
-          <li>
-            <button
-              class:actif={eleveActif?.id === eleve.id}
-              onclick={() => (eleveChoisi = eleve.id)}
-            >
-              {eleve.nom} {eleve.prenom}
-            </button>
-          </li>
-        {/each}
-      </ul>
+    <section class="panneau">
+      <h3>Impression</h3>
+
+      <!-- Interrupteur plutôt que case à cocher : l'action est lourde (vingt-cinq
+           bulletins) et doit se voir avant qu'on appuie sur « Imprimer ». -->
+      <label class="bascule">
+        <input type="checkbox" bind:checked={touteLaClasse} />
+        <span class="rail" aria-hidden="true"><span class="galet"></span></span>
+        <span class="etiquette">
+          Toute la classe
+          <span class="detail">{eleves.length} bulletin{eleves.length > 1 ? 's' : ''}</span>
+        </span>
+      </label>
 
       <button class="principal imprimer" disabled={bulletins.length === 0} onclick={imprimer}>
         Imprimer {touteLaClasse ? `les ${eleves.length} bulletins` : 'ce bulletin'}
       </button>
+
       <p class="rappel">
-        Dans la boîte d'impression, décochez « En-têtes et pieds de page », sinon l'adresse du
-        fichier s'imprime sur le bulletin.
+        <strong>Avant d'imprimer :</strong> dans la boîte d'impression, décochez
+        « En-têtes et pieds de page », sinon l'adresse du fichier s'imprime sur le bulletin.
       </p>
-    </div>
+    </section>
 
     {#if eleveActif}
-      <div class="verso">
+      <section class="panneau">
         <h3>Verso — {eleveActif.nom} {eleveActif.prenom}</h3>
 
         <label class="plein">
@@ -142,7 +155,7 @@
             </select>
           </label>
         {/each}
-      </div>
+      </section>
     {/if}
   </aside>
 
@@ -160,67 +173,127 @@
 <style>
   .ecran {
     display: grid;
-    grid-template-columns: 17rem minmax(0, 1fr);
-    gap: 1.5rem;
+    grid-template-columns: 17.5rem minmax(0, 1fr);
+    gap: var(--e6);
     align-items: start;
   }
 
-  .choix,
-  .verso {
+  aside {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--e5);
+    position: sticky;
+    top: 3.9rem;
+    max-height: calc(100vh - 5rem);
+    overflow: auto;
+    padding-right: var(--e1);
   }
 
-  .verso {
-    margin-top: 1.2rem;
-    padding-top: 0.8rem;
-    border-top: 1px solid var(--trait);
+  .panneau {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
   }
 
   h3 {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--encre-douce);
   }
 
-  .classe-entiere {
+  /* --- Interrupteur --- */
+  .bascule {
+    display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 0.4rem;
-    color: var(--encre);
-    font-size: 0.87rem;
-  }
-
-  .liste {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    max-height: 32vh;
-    overflow: auto;
+    gap: var(--e3);
+    padding: var(--e3);
     border: 1px solid var(--trait);
-    border-radius: 6px;
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--encre);
+    font-size: var(--t-md);
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+    cursor: pointer;
   }
 
-  .liste button {
-    display: block;
-    width: 100%;
-    border: 0;
-    border-radius: 0;
-    text-align: left;
-    font-size: 0.85rem;
-    padding: 0.25rem 0.5rem;
+  .bascule:hover {
+    border-color: var(--trait-fort);
   }
 
-  .liste button.actif {
+  .bascule input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .rail {
+    flex: none;
+    display: flex;
+    align-items: center;
+    width: 2.1rem;
+    height: 1.15rem;
+    padding: 2px;
+    border-radius: var(--r-max);
+    background: var(--trait-fort);
+    transition: background var(--transition);
+  }
+
+  .galet {
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: var(--r-max);
+    background: var(--surface);
+    box-shadow: var(--ombre-1);
+    transition: transform var(--transition);
+  }
+
+  .bascule input:checked + .rail {
     background: var(--accent);
-    color: #fff;
   }
 
+  .bascule input:checked + .rail .galet {
+    transform: translateX(0.95rem);
+  }
+
+  .bascule input:focus-visible + .rail {
+    box-shadow: var(--anneau);
+  }
+
+  .etiquette {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+
+  .detail {
+    color: var(--encre-douce);
+    font-size: var(--t-xs);
+    font-weight: 400;
+  }
+
+  .imprimer {
+    justify-content: center;
+    padding: 0.5rem 0.8rem;
+  }
+
+  /* C7 : le réglage à décocher est rappelé là où on imprime, pas dans une notice
+     qui reste sur le Drive. */
   .rappel {
     margin: 0;
-    font-size: 0.75rem;
-    color: var(--encre-douce);
-    line-height: 1.35;
+    padding: var(--e3) var(--e4);
+    border-left: 3px solid var(--attention);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    background: var(--attention-fond);
+    color: var(--attention);
+    font-size: var(--t-xs);
+    line-height: 1.45;
   }
 
   .plein {
@@ -232,16 +305,23 @@
     width: 100%;
   }
 
+  /* Le « bureau » : un fond sourd sur lequel la feuille se détache. */
   .apercu {
-    background: var(--fond-doux);
-    padding: 1rem;
-    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e5);
+    padding: var(--e5);
+    border: 1px solid var(--trait);
+    border-radius: var(--r-lg);
+    background: var(--surface-appuyee);
   }
 
   .vide {
     margin: 0;
+    padding: var(--e7);
     color: var(--encre-douce);
-    font-size: 0.85rem;
+    font-size: var(--t-md);
+    text-align: center;
   }
 
   @media print {
@@ -250,22 +330,27 @@
     }
 
     .apercu {
+      display: block;
       background: none;
+      border: 0;
       padding: 0;
+      gap: 0;
     }
   }
 
-  @media (max-width: 780px) {
+  @media (max-width: 900px) {
     .ecran {
       grid-template-columns: 1fr;
     }
 
-    .liste {
-      max-height: 40vh;
+    aside {
+      position: static;
+      max-height: none;
+      overflow: visible;
     }
 
     .apercu {
-      padding: 0.6rem;
+      padding: var(--e3);
     }
   }
 </style>

@@ -1,13 +1,25 @@
 <!--
-  Écran principal : la barre de fichier (C1, C3, C4), le choix de la période,
-  et l'un des trois écrans — saisie, bulletins imprimables, réglages.
+  Coquille de l'application : la barre de fichier (C1, C3, C4), la barre de
+  contexte (écran courant + période), et l'un des trois écrans — saisie,
+  bulletins imprimables, réglages.
+
+  Deux barres, deux rôles, et jamais l'inverse :
+    · la barre haute parle du *fichier* — quelle classe est ouverte, est-elle
+      enregistrée, comment l'ouvrir et la réenregistrer ;
+    · la barre de contexte parle de *ce qu'on regarde* — quel écran, quelle
+      période, quelle date de bulletin.
+  L'ancienne version mêlait les deux dans une seule rangée séparée par un trait,
+  ce qui mettait « Réglages » et « Période 2 » au même niveau alors que l'un
+  change d'écran et l'autre change de données.
 -->
 <script lang="ts">
   import { classeur, DATE_BUILD, VERSION } from '../etat/classeur.svelte.js';
   import { ajouterEleve, elevesTries, supprimerEleve } from '../domaine/mutations.js';
+  import type { Eleve } from '../domaine/modele.js';
   import EcranSaisie from './EcranSaisie.svelte';
   import EcranBulletins from './EcranBulletins.svelte';
   import EcranAdministration from './EcranAdministration.svelte';
+  import ListeEleves from './ListeEleves.svelte';
 
   let champFichier = $state<HTMLInputElement | null>(null);
   let vue = $state<'saisie' | 'bulletins' | 'administration'>('saisie');
@@ -25,6 +37,12 @@
 
   const fichier = $derived(classeur.fichier);
   const eleves = $derived(fichier ? elevesTries(fichier) : []);
+
+  const VUES = [
+    { cle: 'saisie', libelle: 'Saisie' },
+    { cle: 'bulletins', libelle: 'Bulletins' },
+    { cle: 'administration', libelle: 'Réglages' },
+  ] as const;
 
   // Garde-fou C1 : l'onglet ne se ferme pas sur un travail non enregistré.
   $effect(() => {
@@ -62,29 +80,61 @@
     prenomEleve = '';
   }
 
-  function retirerEleve(id: string, nom: string): void {
+  function retirerEleve(eleve: Eleve): void {
+    const nom = `${eleve.nom} ${eleve.prenom}`;
     if (!fichier || !confirm(`Supprimer ${nom} et tous ses résultats ?`)) return;
-    supprimerEleve(fichier, id);
+    supprimerEleve(fichier, eleve.id);
     classeur.toucher();
   }
 </script>
 
-<header class="no-print">
-  <div class="titre">
-    <strong>Bulletin scolaire</strong>
-    {#if fichier}
-      <span class="nom-fichier">{classeur.nomFichier}</span>
-      {#if classeur.modifie}
-        <span class="drapeau" title="Ces modifications ne sont pas encore dans le fichier du Drive">
-          modifications non enregistrées
-        </span>
-      {:else}
-        <span class="drapeau enregistre">enregistré</span>
-      {/if}
-    {/if}
+<header class="barre no-print">
+  <div class="marque">
+    <svg class="logo" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <rect x="3" y="2" width="18" height="20" rx="5" fill="currentColor" opacity="0.14" />
+      <path
+        d="M7.5 8h9M7.5 12h9M7.5 16h5.5"
+        stroke="currentColor"
+        stroke-width="1.9"
+        stroke-linecap="round"
+        fill="none"
+      />
+    </svg>
+    <span class="titre">
+      <strong>Bulletin scolaire</strong>
+      <span class="version" title="Date de compilation : {DATE_BUILD}">
+        v{VERSION} · {DATE_BUILD}
+      </span>
+    </span>
   </div>
 
+  {#if fichier}
+    <div class="contexte">
+      <span class="nom-fichier" title="Fichier de classe ouvert">{classeur.nomFichier}</span>
+      {#if fichier.annee.libelle || fichier.annee.ecole}
+        <span class="sous-titre">
+          {[fichier.annee.libelle, fichier.annee.ecole].filter(Boolean).join(' · ')}
+        </span>
+      {/if}
+    </div>
+  {/if}
+
   <div class="actions">
+    {#if fichier}
+      <!-- L'indicateur n'est pas décoratif : rien ne s'écrit tout seul sur le
+           Drive (C1), il dit s'il reste du travail à sauver. -->
+      <span
+        class="etat"
+        class:en-attente={classeur.modifie}
+        title={classeur.modifie
+          ? 'Ces modifications ne sont pas encore dans le fichier du Drive'
+          : 'Le fichier téléchargé est à jour'}
+      >
+        <span class="pastille" aria-hidden="true"></span>
+        {classeur.modifie ? 'Non enregistré' : 'Enregistré'}
+      </span>
+    {/if}
+
     <button onclick={() => champFichier?.click()}>Ouvrir une classe…</button>
     <input
       bind:this={champFichier}
@@ -93,31 +143,44 @@
       hidden
       onchange={auChoixDeFichier}
     />
-    <button class="principal" disabled={!fichier} onclick={() => classeur.enregistrer()}>
+    <!-- Enregistrer ne devient l'action dominante que lorsqu'il y a réellement
+         quelque chose à enregistrer. -->
+    <button
+      class:principal={classeur.modifie}
+      disabled={!fichier}
+      onclick={() => classeur.enregistrer()}
+    >
       Enregistrer
     </button>
-    <span class="version" title="Date de compilation : {DATE_BUILD}">v{VERSION} — {DATE_BUILD}</span>
   </div>
 </header>
 
 {#if classeur.message}
-  <p class="bandeau no-print" class:erreur={classeur.message.ton === 'erreur'} role="status">
-    {classeur.message.texte}
-  </p>
+  <div class="bandeau no-print" class:erreur={classeur.message.ton === 'erreur'} role="status">
+    <span class="pastille" aria-hidden="true"></span>
+    <p>{classeur.message.texte}</p>
+    <button class="discret compact" aria-label="Masquer ce message" onclick={() => (classeur.message = null)}>
+      ×
+    </button>
+  </div>
 {/if}
 
 <main>
   {#if !fichier}
     <section class="accueil">
       <h1>Par quoi commencer ?</h1>
-      <p>
+      <p class="chapeau">
         Ce fichier est l'<em>application</em>. Les données de chaque classe vivent dans un
-        fichier <code>.json</code> distinct, à conserver sur le Drive de l'école. Ne les confondez
-        jamais : l'application se remplace à chaque mise à jour, les classes non.
+        fichier <code>.json</code> distinct, à conserver sur le Drive de l'école.
+      </p>
+
+      <p class="avertissement">
+        <strong>Ne les confondez jamais :</strong> l'application se remplace à chaque mise à jour,
+        les classes non.
       </p>
 
       <div class="choix">
-        <div class="carte">
+        <div class="carte mise-en-avant">
           <h2>Ouvrir une classe existante</h2>
           <p>Reprendre le travail sur un fichier <code>.json</code> déjà enregistré sur le Drive.</p>
           <button class="principal" onclick={() => champFichier?.click()}>
@@ -132,38 +195,43 @@
             <label>Année scolaire <input bind:value={libelleAnnee} placeholder="2025-2026" /></label>
             <label>École <input bind:value={ecole} placeholder="Momignies" /></label>
             <label>Titulaire <input bind:value={titulaire} /></label>
-            <button class="principal" type="submit">Créer la classe</button>
+            <button type="submit">Créer la classe</button>
           </form>
         </div>
       </div>
     </section>
   {:else}
-    <nav class="periodes no-print">
-      <div class="vues">
-        <button class:active={vue === 'saisie'} onclick={() => (vue = 'saisie')}>Saisie</button>
-        <button class:active={vue === 'bulletins'} onclick={() => (vue = 'bulletins')}>
-          Bulletins
-        </button>
-        <button class:active={vue === 'administration'} onclick={() => (vue = 'administration')}>
-          Réglages
-        </button>
+    <nav class="contexte-barre no-print" aria-label="Écran et période">
+      <div class="segmente" role="group" aria-label="Écran">
+        {#each VUES as item (item.cle)}
+          <button
+            class="segment"
+            aria-pressed={vue === item.cle}
+            onclick={() => (vue = item.cle)}
+          >
+            {item.libelle}
+          </button>
+        {/each}
       </div>
 
       {#if vue !== 'administration'}
         <!-- La période courante ne pilote que la saisie et les bulletins : dans les
              réglages, toutes les périodes sont déjà listées, un sélecteur y serait sans
              effet visible et dupliquerait le champ de date du tableau. -->
-        {#each fichier.periodes as periode (periode.id)}
-          <button
-            class:active={classeur.periodeCourante === periode.id}
-            onclick={() => (classeur.periodeCourante = periode.id)}
-          >
-            Période {periode.numero}
-          </button>
-        {/each}
+        <div class="segmente" role="group" aria-label="Période">
+          {#each fichier.periodes as periode (periode.id)}
+            <button
+              class="segment"
+              aria-pressed={classeur.periodeCourante === periode.id}
+              onclick={() => (classeur.periodeCourante = periode.id)}
+            >
+              Période {periode.numero}
+            </button>
+          {/each}
+        </div>
 
         <label class="date">
-          Date du bulletin
+          <span>Date du bulletin</span>
           <input
             type="date"
             value={fichier.periodes.find((p) => p.id === classeur.periodeCourante)?.date_bulletin ?? ''}
@@ -193,26 +261,29 @@
     {:else}
       <div class="colonnes">
         <aside class="no-print">
-          <h2>Élèves <span class="compte">{eleves.length}</span></h2>
-          <ul class="liste-eleves">
-            {#each eleves as eleve (eleve.id)}
-              <li>
-                <span>{eleve.nom} {eleve.prenom}</span>
-                <button
-                  class="supprimer"
-                  aria-label="Supprimer {eleve.nom} {eleve.prenom}"
-                  onclick={() => retirerEleve(eleve.id, `${eleve.nom} ${eleve.prenom}`)}>×</button
-                >
-              </li>
-            {/each}
-          </ul>
-          <form class="ajout" onsubmit={ajouterUnEleve}>
+          <section class="panneau">
+            <h2>
+              Élèves
+              <span class="compte">{eleves.length}</span>
+            </h2>
+            <ListeEleves
+              {eleves}
+              onSuppression={retirerEleve}
+              vide="Aucun élève. Ajoutez-en ci-dessous."
+            />
+          </section>
+
+          <section class="panneau">
             <h2>Ajouter un élève</h2>
-            <label>Nom <input bind:value={nomEleve} required /></label>
-            <label>Prénom <input bind:value={prenomEleve} /></label>
-            <label>Année <input type="number" min="1" max="6" bind:value={anneeEtude} /></label>
-            <button type="submit">Ajouter l'élève</button>
-          </form>
+            <form class="ajout" onsubmit={ajouterUnEleve}>
+              <label class="plein">Nom <input bind:value={nomEleve} required /></label>
+              <label class="plein">Prénom <input bind:value={prenomEleve} /></label>
+              <label class="courte">
+                Année <input type="number" min="1" max="6" bind:value={anneeEtude} />
+              </label>
+              <button type="submit">Ajouter l'élève</button>
+            </form>
+          </section>
         </aside>
 
         <section class="saisie">
@@ -231,243 +302,398 @@
 </main>
 
 <style>
-  header {
+  /* ---------- Barre d'application ---------- */
+  .barre {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.6rem 1rem;
+    gap: var(--e5);
+    padding: var(--e3) var(--e5);
     border-bottom: 1px solid var(--trait);
-    background: var(--fond-doux);
+    background: var(--surface);
+    box-shadow: var(--ombre-1);
+  }
+
+  .marque {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+  }
+
+  .logo {
+    flex: none;
+    color: var(--accent);
   }
 
   .titre {
     display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+
+  .titre strong {
+    font-size: var(--t-base);
+    letter-spacing: -0.012em;
+  }
+
+  /* Version et date de build restent lisibles en permanence, sans occuper la
+     place d'une action. */
+  .version {
+    color: var(--encre-tenue);
+    font-size: var(--t-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .contexte {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-left: var(--e5);
+    border-left: 1px solid var(--trait);
+    line-height: 1.2;
   }
 
   .nom-fichier {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--t-md);
+    font-weight: 600;
+  }
+
+  .sous-titre {
     color: var(--encre-douce);
-    font-size: 0.85rem;
-  }
-
-  .drapeau {
-    padding: 0.1rem 0.45rem;
-    border-radius: 999px;
-    background: var(--alerte-fond);
-    color: var(--alerte);
-    font-size: 0.75rem;
-  }
-
-  .drapeau.enregistre {
-    background: #edf7f1;
-    color: var(--ok);
+    font-size: var(--t-xs);
   }
 
   .actions {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--e3);
+    margin-left: auto;
   }
 
-  .version {
-    color: var(--encre-douce);
-    font-size: 0.75rem;
+  .etat {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e2);
+    padding: 0.2rem 0.6rem 0.2rem 0.45rem;
+    border-radius: var(--r-max);
+    background: var(--ok-fond);
+    color: var(--ok);
+    font-size: var(--t-xs);
+    font-weight: 650;
+    white-space: nowrap;
   }
 
+  .etat.en-attente {
+    background: var(--attention-fond);
+    color: var(--attention);
+  }
+
+  .pastille {
+    width: 0.44rem;
+    height: 0.44rem;
+    border-radius: var(--r-max);
+    background: currentColor;
+  }
+
+  /* ---------- Bandeau de message ---------- */
   .bandeau {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--e3);
+    padding: var(--e3) var(--e5);
+    border-bottom: 1px solid var(--accent-trait);
+    background: var(--accent-doux);
+    color: var(--accent-fort);
+    font-size: var(--t-md);
+  }
+
+  .bandeau .pastille {
+    margin-top: 0.42rem;
+  }
+
+  .bandeau p {
     margin: 0;
-    padding: 0.5rem 1rem;
-    background: #eef4fc;
-    border-bottom: 1px solid var(--trait);
-    font-size: 0.87rem;
+    flex: 1;
+  }
+
+  .bandeau button {
+    color: inherit;
+    font-size: var(--t-lg);
+    line-height: 1;
   }
 
   .bandeau.erreur {
+    border-bottom-color: var(--alerte);
     background: var(--alerte-fond);
     color: var(--alerte);
   }
 
   main {
-    padding: 1rem;
+    padding: var(--e5);
   }
 
+  /* ---------- Accueil ---------- */
   .accueil {
-    max-width: 52rem;
+    max-width: 54rem;
+    margin: var(--e7) auto;
   }
 
   .accueil h1 {
-    font-size: 1.2rem;
+    margin: 0 0 var(--e3);
+    font-size: var(--t-2xl);
   }
 
-  .accueil > p {
+  .chapeau {
+    margin: 0;
+    max-width: 44rem;
     color: var(--encre-douce);
-    line-height: 1.5;
+    font-size: var(--t-base);
+    line-height: 1.6;
+  }
+
+  /* La confusion « application / données » est le risque n° 1 de C3 : elle a
+     droit à un encadré, pas à une phrase au fil du texte. */
+  .avertissement {
+    margin: var(--e5) 0 0;
+    padding: var(--e4) var(--e5);
+    border-left: 3px solid var(--attention);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    background: var(--attention-fond);
+    color: var(--attention);
+    font-size: var(--t-md);
   }
 
   .choix {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-    margin-top: 1.5rem;
-    align-items: start;
+    gap: var(--e5);
+    margin-top: var(--e6);
+    align-items: stretch;
   }
 
   .carte {
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
-    padding: 1.2rem;
+    gap: var(--e4);
+    padding: var(--e6);
     border: 1px solid var(--trait);
-    border-radius: 8px;
-    background: var(--fond-doux);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: var(--ombre-1);
+  }
+
+  /* Neuf fois sur dix on rouvre une classe existante : ce chemin est le plus
+     visible, l'autre reste disponible sans se disputer l'attention. */
+  .carte.mise-en-avant {
+    border-color: var(--accent-trait);
+    background: var(--accent-doux);
   }
 
   .carte h2 {
-    font-size: 1rem;
     margin: 0;
+    font-size: var(--t-lg);
   }
 
   .carte p {
     margin: 0;
     color: var(--encre-douce);
-    line-height: 1.4;
-    font-size: 0.9rem;
+    font-size: var(--t-md);
+    line-height: 1.55;
   }
 
-  .carte .principal {
+  /* L'action se pose au pied de la carte : les deux chemins d'entrée s'alignent
+     au lieu de flotter à des hauteurs différentes. */
+  .carte button {
     align-self: flex-start;
+    margin-top: auto;
   }
 
-  form {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 0.6rem;
-  }
-
-  .periodes {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.4rem;
-    margin-bottom: 1rem;
-  }
-
-  .periodes button.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-
-  .vues {
-    display: flex;
-    gap: 0.4rem;
-    margin-right: 1rem;
-    padding-right: 1rem;
-    border-right: 1px solid var(--trait);
-  }
-
-  .periodes .date {
-    margin-left: auto;
-  }
-
-  .colonnes {
+  .carte form {
     display: grid;
-    grid-template-columns: 15rem minmax(0, 1fr);
-    gap: 1.5rem;
-    align-items: start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e4);
   }
 
-  aside h2 {
-    font-size: 0.95rem;
-    margin: 0 0 0.5rem;
+  .carte form label {
+    min-width: 0;
   }
 
-  .compte {
-    color: var(--encre-douce);
-    font-weight: 400;
-  }
-
-  .liste-eleves {
-    list-style: none;
-    margin: 0 0 0.8rem;
-    padding: 0;
-    max-height: 40vh;
-    overflow: auto;
-    border: 1px solid var(--trait);
-    border-radius: 6px;
-  }
-
-  .liste-eleves li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.2rem 0.5rem;
-    font-size: 0.87rem;
-  }
-
-  .liste-eleves li + li {
-    border-top: 1px solid var(--trait);
-  }
-
-  .supprimer {
-    border: 0;
-    background: none;
-    padding: 0 0.2rem;
-    color: var(--encre-douce);
-    line-height: 1;
-  }
-
-  .supprimer:hover {
-    color: var(--alerte);
-    background: none;
-  }
-
-  .ajout label input {
+  .carte form input {
     width: 100%;
   }
 
-  .ajout label:has(input[type='number']) {
+  .carte form button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  /* ---------- Barre de contexte ---------- */
+  .contexte-barre {
+    display: flex;
+    align-items: center;
+    gap: var(--e5);
+    margin-bottom: var(--e5);
+  }
+
+  /* Contrôle segmenté : un groupe de choix exclusifs se lit comme un seul objet,
+     pas comme une rangée de boutons indépendants. */
+  .segmente {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--trait);
+    border-radius: var(--r-md);
+    background: var(--surface-douce);
+  }
+
+  .segment {
+    border: 0;
+    border-radius: var(--r-sm);
+    background: transparent;
+    box-shadow: none;
+    color: var(--encre-douce);
+    font-size: var(--t-md);
+    padding: 0.3rem 0.75rem;
+  }
+
+  .segment:hover:not(:disabled) {
+    background: var(--surface-appuyee);
+    color: var(--encre);
+  }
+
+  .segment[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--accent-fort);
+    font-weight: 650;
+    box-shadow: var(--ombre-1);
+  }
+
+  .date {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--e3);
+    margin-left: auto;
+  }
+
+  /* ---------- Écran de saisie ---------- */
+  .colonnes {
+    display: grid;
+    grid-template-columns: 16rem minmax(0, 1fr);
+    gap: var(--e6);
+    align-items: start;
+  }
+
+  aside {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e5);
+    position: sticky;
+    top: 3.9rem;
+  }
+
+  .panneau {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+  }
+
+  .panneau h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    margin: 0;
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--encre-douce);
+  }
+
+  .compte {
+    padding: 0.05rem 0.4rem;
+    border-radius: var(--r-max);
+    background: var(--surface-appuyee);
+    color: var(--encre-douce);
+    font-size: var(--t-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ajout {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--e3);
+    align-items: end;
+  }
+
+  .ajout .plein {
+    grid-column: 1 / -1;
+  }
+
+  .ajout input {
+    width: 100%;
+  }
+
+  .ajout .courte {
     max-width: 5rem;
   }
 
+  @media (max-width: 900px) {
+    .colonnes {
+      grid-template-columns: 1fr;
+    }
+
+    aside {
+      position: static;
+    }
+  }
+
   @media (max-width: 720px) {
-    header {
+    .barre {
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: var(--e3);
+    }
+
+    .contexte {
+      padding-left: 0;
+      border-left: 0;
     }
 
     .actions {
       flex-wrap: wrap;
+      width: 100%;
+      margin-left: 0;
     }
 
     main {
-      padding: 0.75rem;
+      padding: var(--e4);
     }
 
-    .choix {
+    .accueil {
+      margin-top: var(--e5);
+    }
+
+    .choix,
+    .carte form {
       grid-template-columns: 1fr;
     }
 
-    .periodes {
+    .contexte-barre {
+      flex-wrap: wrap;
+      gap: var(--e3);
+    }
+
+    .segmente {
       flex-wrap: wrap;
     }
 
-    .vues {
-      width: 100%;
-      margin-right: 0;
-      padding-right: 0;
-      padding-bottom: 0.5rem;
-      border-right: 0;
-      border-bottom: 1px solid var(--trait);
-    }
-
-    .periodes .date {
+    .date {
       margin-left: 0;
       width: 100%;
     }
   }
-
 </style>

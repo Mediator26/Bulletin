@@ -7,6 +7,11 @@
 
   Les suppressions détruisent des résultats déjà encodés : elles sont toutes
   confirmées, et l'écran affiche ce qui va disparaître.
+
+  Mise en forme : une section = une carte titrée, avec sa phrase d'explication
+  juste sous le titre plutôt qu'en note de bas de section. Les réglages se lisent
+  rarement de haut en bas ; on y descend pour une chose précise, et chaque carte
+  doit se comprendre seule.
 -->
 <script lang="ts">
   import type { FichierClasse, Id, Rubrique } from '../domaine/modele.js';
@@ -85,8 +90,11 @@
 </script>
 
 <div class="administration">
-  <section>
-    <h2>Identité de la classe</h2>
+  <section class="carte">
+    <header>
+      <h2>Identité de la classe</h2>
+      <p class="explication">Ces trois champs s'impriment en tête de chaque bulletin.</p>
+    </header>
     <div class="champs">
       <label>
         École
@@ -119,11 +127,16 @@
         />
       </label>
     </div>
-    <p class="note">Ces trois champs s'impriment en tête de chaque bulletin.</p>
   </section>
 
-  <section>
-    <h2>Périodes</h2>
+  <section class="carte">
+    <header>
+      <h2>Périodes</h2>
+      <p class="explication">
+        Le nombre de périodes est une donnée, pas une structure figée : passer à quatre périodes
+        ne demande aucune reprise des bulletins.
+      </p>
+    </header>
     <div class="tabla-scroll">
       <table class="tableau">
         <thead>
@@ -173,14 +186,16 @@
     >
       Ajouter une période
     </button>
-    <p class="note">
-      Le nombre de périodes est une donnée, pas une structure figée : passer à quatre périodes
-      ne demande aucune reprise des bulletins.
-    </p>
   </section>
 
-  <section>
-    <h2>Rubriques et pondérations</h2>
+  <section class="carte">
+    <header>
+      <h2>Rubriques et pondérations</h2>
+      <p class="explication">
+        Chaque classe fige son propre barème : modifier une pondération ici ne touche à aucune
+        autre classe, ni à aucune autre année.
+      </p>
+    </header>
 
     {#if anomalies.length > 0}
       <ul class="anomalies" role="alert">
@@ -316,52 +331,111 @@
   .administration {
     display: flex;
     flex-direction: column;
-    gap: 1.8rem;
-    max-width: 62rem;
+    gap: var(--e6);
+    max-width: 64rem;
+  }
+
+  .carte {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--e5);
+    padding: var(--e6);
+    border: 1px solid var(--trait);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: var(--ombre-1);
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
   }
 
   h2 {
-    font-size: 1rem;
-    margin: 0 0 0.6rem;
+    margin: 0;
+    font-size: var(--t-lg);
+  }
+
+  .explication {
+    margin: 0;
+    max-width: 44rem;
+    color: var(--encre-douce);
+    font-size: var(--t-md);
+    line-height: 1.5;
   }
 
   .champs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.8rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--e4);
+    width: 100%;
+  }
+
+  .champs input {
+    width: 100%;
   }
 
   .tabla-scroll {
+    width: 100%;
     overflow-x: auto;
-    margin-bottom: 0.7rem;
+    border: 1px solid var(--trait);
+    border-radius: var(--r-md);
   }
 
+  /* Même grammaire que la grille de saisie : bordures séparées, en-tête sourd,
+     ligne survolée teintée. Deux tableaux dans la même application ne doivent
+     pas avoir deux apparences. */
   .tableau {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--t-md);
   }
 
   .tableau th,
   .tableau td {
-    border: 1px solid var(--trait);
-    padding: 0.2rem 0.4rem;
+    border-bottom: 1px solid var(--trait);
+    padding: 0.3rem 0.5rem;
     text-align: left;
+    vertical-align: middle;
+  }
+
+  .tableau tbody tr:last-child td {
+    border-bottom: 0;
   }
 
   .tableau thead th {
-    background: var(--fond-doux);
-    font-size: 0.75rem;
+    background: var(--surface-douce);
+    color: var(--encre-douce);
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
 
+  .tableau tbody tr:hover td {
+    background: var(--surface-douce);
+  }
+
+  /* Une rubrique principale porte le poids de ses sous-rubriques : elle se
+     détache par le fond et la graisse, l'indentation dit le reste. */
   tr.principale td {
-    background: var(--fond-doux);
+    background: var(--surface-douce);
+  }
+
+  tr.principale:hover td {
+    background: var(--surface-appuyee);
   }
 
   tr.principale .libelle {
-    font-weight: 600;
+    font-weight: 700;
   }
 
+  /* Le libellé s'édite sur place : le champ ne se dessine qu'au survol ou au
+     focus, pour que le tableau se lise comme un tableau. */
   .libelle {
     width: 100%;
     min-width: 12rem;
@@ -369,9 +443,15 @@
     background: transparent;
   }
 
-  .libelle:focus {
+  .libelle:hover {
     border-color: var(--trait);
-    background: var(--fond);
+    background: var(--surface);
+  }
+
+  .libelle:focus,
+  .libelle:focus-visible {
+    border-color: var(--accent);
+    background: var(--surface);
   }
 
   .maximum {
@@ -382,6 +462,7 @@
   .nombre {
     text-align: right;
     color: var(--encre-douce);
+    font-variant-numeric: tabular-nums;
   }
 
   .ordre {
@@ -389,57 +470,65 @@
   }
 
   .ordre button {
-    padding: 0.1rem 0.35rem;
+    padding: 0.15rem 0.4rem;
     line-height: 1;
   }
 
-  .danger {
-    color: var(--alerte);
-    border-color: var(--trait);
-    font-size: 0.8rem;
-    padding: 0.15rem 0.5rem;
-  }
-
-  .danger:hover:not(:disabled) {
-    background: var(--alerte-fond);
+  .ordre button + button {
+    margin-left: 2px;
   }
 
   .anomalies {
-    margin: 0 0 0.7rem;
-    padding: 0.5rem 0.6rem 0.5rem 1.6rem;
+    width: 100%;
+    margin: 0;
+    padding: var(--e4) var(--e4) var(--e4) var(--e6);
     border: 1px solid var(--alerte);
-    border-radius: 6px;
+    border-left-width: 3px;
+    border-radius: var(--r-md);
     background: var(--alerte-fond);
     color: var(--alerte);
-    font-size: 0.82rem;
+    font-size: var(--t-md);
+    line-height: 1.5;
   }
 
+  /* Le formulaire d'ajout ferme la carte : il se lit comme la dernière ligne du
+     tableau, pas comme une section de plus. */
   .ajout {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 0.6rem;
+    gap: var(--e4);
+    width: 100%;
+    padding-top: var(--e5);
+    border-top: 1px dashed var(--trait-fort);
+  }
+
+  .ajout .principal {
+    margin-left: auto;
   }
 
   .note {
-    margin: 0.35rem 0 0;
-    color: var(--encre-douce);
-    font-size: 0.78rem;
+    margin: 0;
+    color: var(--encre-tenue);
+    font-size: var(--t-md);
   }
 
-  @media (max-width: 700px) {
-    .champs {
-      flex-direction: column;
-      align-items: stretch;
+  @media (max-width: 760px) {
+    .carte {
+      padding: var(--e5);
     }
 
-    .champs label input {
-      width: 100%;
+    .champs {
+      grid-template-columns: 1fr;
     }
 
     .ajout {
       flex-direction: column;
       align-items: stretch;
+    }
+
+    .ajout .principal {
+      margin-left: 0;
     }
   }
 </style>
