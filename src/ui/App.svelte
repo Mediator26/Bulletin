@@ -15,7 +15,12 @@
 <script lang="ts">
   import { classeur, DATE_BUILD, VERSION } from '../etat/classeur.svelte.js';
   import { apparence } from '../etat/theme.svelte.js';
-  import { ajouterEleve, elevesTries, supprimerEleve } from '../domaine/mutations.js';
+  import {
+    ajouterEleve,
+    elevesTries,
+    renommerEleve,
+    supprimerEleve,
+  } from '../domaine/mutations.js';
   import type { Eleve } from '../domaine/modele.js';
   import EcranSaisie from './EcranSaisie.svelte';
   import EcranBulletins from './EcranBulletins.svelte';
@@ -79,6 +84,13 @@
     classeur.toucher();
     nomEleve = '';
     prenomEleve = '';
+  }
+
+  /** Correction d'une identité mal encodée : aucun résultat n'est perdu. */
+  function renommer(eleve: Eleve, identite: { nom: string; prenom: string }): boolean {
+    if (!fichier || !renommerEleve(fichier, eleve.id, identite)) return false;
+    classeur.toucher();
+    return true;
   }
 
   function retirerEleve(eleve: Eleve): void {
@@ -307,6 +319,7 @@
             </h2>
             <ListeEleves
               {eleves}
+              onRenommage={renommer}
               onSuppression={retirerEleve}
               vide="Aucun élève. Ajoutez-en ci-dessous."
             />

@@ -331,7 +331,7 @@
     border: 0;
     border-radius: 0;
     padding: 0.32rem 0.5rem;
-    text-align: right;
+    text-align: left;
     font-variant-numeric: tabular-nums;
     background: transparent;
   }

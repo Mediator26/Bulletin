@@ -7,6 +7,7 @@ import {
   definirResultat,
   elevesTries,
   nouvelId,
+  renommerEleve,
   resultatDe,
   supprimerEleve,
   supprimerTest,
@@ -30,6 +31,32 @@ describe('nouvelId', () => {
   it('ne se répète pas', () => {
     const ids = new Set(Array.from({ length: 500 }, () => nouvelId('x')));
     expect(ids.size).toBe(500);
+  });
+});
+
+describe('renommerEleve', () => {
+  it('corrige l’identité sans toucher aux résultats déjà encodés', () => {
+    const eleve = ajouterEleve(f, { nom: 'Martn', prenom: 'Lea', annee_etude: 4 });
+    const rubrique = f.rubriques[0]!;
+    const t = ajouterTest(f, {
+      periode_id: p1(),
+      rubrique_id: rubrique.id,
+      libelle: 'Test 1',
+      maximum: 10,
+    });
+    definirResultat(f, t.id, eleve.id, 8);
+
+    expect(renommerEleve(f, eleve.id, { nom: '  Martin ', prenom: ' Léa ' })).toBe(true);
+    expect(f.eleves[0]!.nom).toBe('Martin');
+    expect(f.eleves[0]!.prenom).toBe('Léa');
+    expect(resultatDe(f, t.id, eleve.id)?.valeur).toBe(8);
+  });
+
+  it('refuse un nom vide et un élève inconnu', () => {
+    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+    expect(renommerEleve(f, eleve.id, { nom: '   ', prenom: 'Léa' })).toBe(false);
+    expect(renommerEleve(f, 'eleve-inconnu', { nom: 'X', prenom: 'Y' })).toBe(false);
+    expect(f.eleves[0]!.nom).toBe('Martin');
   });
 });
 

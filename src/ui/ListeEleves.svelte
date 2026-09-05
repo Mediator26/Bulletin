@@ -6,7 +6,11 @@
   noms, deux hauteurs de ligne, deux états de survol. Un seul composant, deux
   usages selon les rappels fournis :
     · `onSelection` → les lignes deviennent cliquables et l'une est retenue ;
-    · `onSuppression` → chaque ligne porte son bouton de retrait.
+    · `onSuppression` → chaque ligne porte son bouton de retrait ;
+    · `onRenommage` → chaque ligne porte un crayon qui la transforme en un
+      petit formulaire nom/prénom, sur place. Corriger une faute de frappe ne
+      doit pas obliger à supprimer l'élève puis à le recréer : la suppression
+      emporte tous ses résultats, le renommage n'en touche aucun.
 
   Aucune règle métier ici : l'ordre des élèves vient de `mutations.elevesTries`.
 -->
@@ -19,11 +23,35 @@
     selectionId?: Id | null;
     onSelection?: (id: Id) => void;
     onSuppression?: (eleve: Eleve) => void;
+    /** Reçoit l'identité corrigée ; la ligne quitte l'édition si le rappel renvoie `true`. */
+    onRenommage?: (eleve: Eleve, identite: { nom: string; prenom: string }) => boolean;
     /** Texte affiché quand la classe est vide. */
     vide?: string;
   }
 
-  const { eleves, selectionId = null, onSelection, onSuppression, vide }: Props = $props();
+  const {
+    eleves,
+    selectionId = null,
+    onSelection,
+    onSuppression,
+    onRenommage,
+    vide,
+  }: Props = $props();
+
+  /** Élève en cours de correction — un seul à la fois. */
+  let enEdition = $state<Id | null>(null);
+  let nomEdite = $state('');
+  let prenomEdite = $state('');
+
+  function ouvrirEdition(eleve: Eleve): void {
+    enEdition = eleve.id;
+    nomEdite = eleve.nom;
+    prenomEdite = eleve.prenom;
+  }
+
+  function valider(eleve: Eleve): void {
+    if (onRenommage?.(eleve, { nom: nomEdite, prenom: prenomEdite })) enEdition = null;
+  }
 
   /** Monogramme : deux lettres suffisent à repérer une ligne sans la lire. */
   function initiales(eleve: Eleve): string {
@@ -37,7 +65,35 @@
   <ul class="liste" class:selectionnable={!!onSelection}>
     {#each eleves as eleve (eleve.id)}
       <li class:retenu={selectionId === eleve.id}>
-        {#if onSelection}
+        {#if enEdition === eleve.id}
+          <form
+            class="edition"
+            onsubmit={(e) => {
+              e.preventDefault();
+              valider(eleve);
+            }}
+          >
+            <!-- svelte-ignore a11y_autofocus -->
+            <input
+              bind:value={nomEdite}
+              autofocus
+              required
+              aria-label="Nom"
+              placeholder="Nom"
+              onkeydown={(e) => e.key === 'Escape' && (enEdition = null)}
+            />
+            <input
+              bind:value={prenomEdite}
+              aria-label="Prénom"
+              placeholder="Prénom"
+              onkeydown={(e) => e.key === 'Escape' && (enEdition = null)}
+            />
+            <button type="submit" title="Enregistrer le nom">Renommer</button>
+            <button type="button" class="discret" onclick={() => (enEdition = null)}>
+              Annuler
+            </button>
+          </form>
+        {:else if onSelection}
           <button
             type="button"
             class="ligne"
@@ -54,7 +110,19 @@
           </span>
         {/if}
 
-        {#if onSuppression}
+        {#if onRenommage && enEdition !== eleve.id}
+          <button
+            type="button"
+            class="crayon"
+            aria-label="Renommer {eleve.nom} {eleve.prenom}"
+            title="Renommer {eleve.nom} {eleve.prenom}"
+            onclick={() => ouvrirEdition(eleve)}
+          >
+            ✎
+          </button>
+        {/if}
+
+        {#if onSuppression && enEdition !== eleve.id}
           <button
             type="button"
             class="retirer"
@@ -156,6 +224,50 @@
   /* Le retrait détruit des résultats : il reste discret tant qu'on ne le vise
      pas, mais jamais invisible — un bouton qui n'apparaît qu'au survol est
      introuvable au clavier. */
+  /* Le crayon ne détruit rien : il reste neutre, à côté de la croix rouge. */
+  .crayon {
+    flex: none;
+    padding: 0 var(--e2);
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--encre-tenue);
+    font-size: var(--t-md);
+    line-height: 1;
+  }
+
+  .crayon:hover:not(:disabled) {
+    background: var(--surface-appuyee);
+    color: var(--accent-fort);
+  }
+
+  .edition {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e1);
+    min-width: 0;
+    padding: 0.2rem 0.3rem;
+  }
+
+  .edition input {
+    flex: 1 1 5rem;
+    min-width: 0;
+    font-size: var(--t-sm);
+  }
+
+  .edition button {
+    font-size: var(--t-xs);
+  }
+
+  .edition .discret {
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--encre-douce);
+  }
+
   .retirer {
     flex: none;
     padding: 0 var(--e2);

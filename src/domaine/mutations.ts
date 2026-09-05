@@ -49,6 +49,26 @@ export function ajouterEleve(
   return nouveau;
 }
 
+/**
+ * Corrige l'identité d'un élève encodée de travers.
+ *
+ * Seuls le nom et le prénom changent : l'`id` reste le même, si bien que les
+ * résultats, cotations, commentaires et observations déjà saisis suivent
+ * l'élève sans être touchés. Un nom vide est refusé — renommer ne doit pas
+ * pouvoir faire disparaître une ligne de la liste.
+ */
+export function renommerEleve(
+  fichier: FichierClasse,
+  eleve_id: Id,
+  identite: { nom: string; prenom: string },
+): boolean {
+  const eleve = fichier.eleves.find((e) => e.id === eleve_id);
+  if (!eleve || !identite.nom.trim()) return false;
+  eleve.nom = identite.nom.trim();
+  eleve.prenom = identite.prenom.trim();
+  return true;
+}
+
 export function supprimerEleve(fichier: FichierClasse, eleve_id: Id): void {
   fichier.eleves = fichier.eleves.filter((e) => e.id !== eleve_id);
   fichier.resultats = fichier.resultats.filter((r) => r.eleve_id !== eleve_id);
