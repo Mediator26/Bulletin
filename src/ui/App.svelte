@@ -179,8 +179,14 @@
         les classes non.
       </p>
 
+      <!-- Les deux cartes sont strictement à égalité : même fond, même cadre,
+           deux actions principales. Ouvrir un fichier existant est simplement
+           placé en premier dans l'ordre de lecture, ce qui suffit à guider sans
+           reléguer la création. Ne pas y remettre de teinte d'accent : privilégier
+           l'un des deux chemins par la couleur est précisément ce que la mise à
+           égalité des deux cartes corrigeait. -->
       <div class="choix">
-        <div class="carte mise-en-avant">
+        <div class="carte">
           <h2>Ouvrir une classe existante</h2>
           <p>Reprendre le travail sur un fichier <code>.json</code> déjà enregistré sur le Drive.</p>
           <button class="principal" onclick={() => champFichier?.click()}>
@@ -195,7 +201,7 @@
             <label>Année scolaire <input bind:value={libelleAnnee} placeholder="2025-2026" /></label>
             <label>École <input bind:value={ecole} placeholder="Momignies" /></label>
             <label>Titulaire <input bind:value={titulaire} /></label>
-            <button type="submit">Créer la classe</button>
+            <button class="principal" type="submit">Créer la classe</button>
           </form>
         </div>
       </div>
@@ -485,13 +491,6 @@
     border-radius: var(--r-lg);
     background: var(--surface);
     box-shadow: var(--ombre-1);
-  }
-
-  /* Neuf fois sur dix on rouvre une classe existante : ce chemin est le plus
-     visible, l'autre reste disponible sans se disputer l'attention. */
-  .carte.mise-en-avant {
-    border-color: var(--accent-trait);
-    background: var(--accent-doux);
   }
 
   .carte h2 {
