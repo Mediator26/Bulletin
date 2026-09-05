@@ -48,6 +48,9 @@
         <thead>
           <tr>
             <th scope="col" class="col-rubrique">Rubrique</th>
+            {#each bulletin.periodesAnterieures as anterieure (anterieure.id)}
+              <th scope="col" class="col-note anterieure">Période {anterieure.numero}</th>
+            {/each}
             <th scope="col" class="col-note">Période {bulletin.periode.numero}</th>
             <th scope="col" class="col-note">Maximum</th>
             <th scope="col" class="col-note">Moyenne annuelle</th>
@@ -58,12 +61,15 @@
             <tr class:principale={ligne.niveau === 0} class:sous-rubrique={ligne.niveau > 0}>
               <th scope="row" style="padding-left: {0.5 + ligne.niveau * 1.2}rem">{ligne.libelle}</th>
               {#if ligne.type === 'echelle'}
-                <td class="echelle" colspan="3">
+                <td class="echelle" colspan={3 + bulletin.periodesAnterieures.length}>
                   {#each ECHELLE as cote (cote)}
                     <span class="cote" class:retenue={ligne.cotation === cote}>{cote}</span>
                   {/each}
                 </td>
               {:else}
+                {#each ligne.scoresAnterieurs as anterieur, i (bulletin.periodesAnterieures[i]!.id)}
+                  <td class="note anterieure">{afficherScore(anterieur)}</td>
+                {/each}
                 <td class="note">{afficherScore(ligne.score)}</td>
                 <td class="note maximum">{ligne.maximum}</td>
                 <td class="note">{afficherScore(ligne.moyenne)}</td>
@@ -74,6 +80,9 @@
         <tfoot>
           <tr>
             <th scope="row">Total</th>
+            {#each bulletin.totauxAnterieurs as anterieur, i (bulletin.periodesAnterieures[i]!.id)}
+              <td class="note anterieure">{afficherScore(anterieur)}</td>
+            {/each}
             <td class="note">{afficherScore(bulletin.total)}</td>
             <td class="note maximum">{bulletin.totalMaximum}</td>
             <td class="note"></td>
@@ -230,6 +239,16 @@
 
   .maximum {
     color: var(--papier-douce);
+  }
+
+  /* Les périodes déjà remises sont un rappel : elles s'effacent derrière la
+     période du jour, qui est celle que le lecteur doit trouver en premier. */
+  .anterieure {
+    color: var(--papier-douce);
+  }
+
+  tr.principale > .anterieure {
+    font-weight: 400;
   }
 
   /* Rubrique principale : le nom en gras et un filet d'appui au-dessus, plutôt

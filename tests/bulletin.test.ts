@@ -41,6 +41,48 @@ function coter(rubrique: string, periode: string, valeur: number | null, statut?
   definirResultat(f, test.id, eleve.id, valeur, statut ?? 'presente');
 }
 
+describe('récapitulatif des périodes précédentes', () => {
+  it('ne rappelle rien tant qu’on n’est pas à la dernière période', () => {
+    const b = construireBulletin(f, eleve.id, p(0))!;
+    expect(b.periodesAnterieures).toEqual([]);
+    expect(b.totauxAnterieurs).toEqual([]);
+    expect(b.lignes.every((l) => l.scoresAnterieurs.length === 0)).toBe(true);
+  });
+
+  it('rappelle les périodes précédentes sur le bulletin de la dernière', () => {
+    const parler = f.rubriques.find((r) => r.libelle === 'Parler')!;
+    coter(parler.id, p(0), 6);
+    coter(parler.id, p(1), 8);
+    coter(parler.id, p(2), 9);
+
+    const derniere = f.periodes.length - 1;
+    const b = construireBulletin(f, eleve.id, p(derniere))!;
+    expect(b.periodesAnterieures.map((x) => x.numero)).toEqual(
+      f.periodes.slice(0, derniere).map((x) => x.numero),
+    );
+
+    // Le test vaut 10, la sous-rubrique aussi : le score est la note brute.
+    const l = ligne(b, parler.id);
+    expect(l.scoresAnterieurs.length).toBe(b.periodesAnterieures.length);
+    expect(l.scoresAnterieurs[0]).toBe(6);
+    expect(l.scoresAnterieurs[1]).toBe(8);
+    expect(l.score).toBe(9);
+  });
+
+  it('totalise chaque période rappelée comme la période courante', () => {
+    const francais = f.rubriques.find((r) => r.libelle === 'Français')!;
+    const parler = f.rubriques.find((r) => r.libelle === 'Parler')!;
+    coter(parler.id, p(0), 5);
+    const derniere = f.periodes.length - 1;
+    const b = construireBulletin(f, eleve.id, p(derniere))!;
+    // « Parler » vaut 10 des 100 points de Français : 5/10 pèse 5 points au total.
+    expect(b.totauxAnterieurs[0]).toBe(5);
+    expect(francais.maximum).toBe(100);
+    // Rien d'encodé sur la deuxième période : « — », jamais 0.
+    expect(b.totauxAnterieurs[1]).toBeNull();
+  });
+});
+
 describe('construireBulletin — structure', () => {
   it('rend null pour un élève ou une période inconnus', () => {
     expect(construireBulletin(f, 'fantome', p(0))).toBeNull();

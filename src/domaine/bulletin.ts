@@ -30,6 +30,11 @@ export interface LigneBulletin {
   maximum: number;
   /** Score de la période, ou `null` quand rien n'est encodé — imprimé « — ». */
   score: number | null;
+  /**
+   * Scores des périodes précédentes, dans l'ordre de `Bulletin.periodesAnterieures`
+   * — donc vide sauf sur le bulletin de la dernière période, qui récapitule l'année.
+   */
+  scoresAnterieurs: (number | null)[];
   /** Cotation littérale, pour les rubriques de type `echelle`. */
   cotation: Echelle | null;
   /** Moyenne des périodes complétées ; vide tant qu'il n'y en a qu'une. */
@@ -42,10 +47,18 @@ export interface Bulletin {
   ecole: string;
   titulaire: string;
   anneeScolaire: string;
+  /**
+   * Périodes rappelées à gauche de la période courante. Vide partout sauf sur
+   * le bulletin de la dernière période : le titulaire y veut l'année entière
+   * sous les yeux, alors qu'en cours d'année ces colonnes n'apprendraient rien.
+   */
+  periodesAnterieures: Periode[];
   lignes: LigneBulletin[];
   commentaire: string;
   /** Total général sur 100 des rubriques principales cotées en points. */
   total: number | null;
+  /** Totaux des `periodesAnterieures`, calculés comme `total`. */
+  totauxAnterieurs: (number | null)[];
   totalMaximum: number;
 }
 
@@ -82,6 +95,21 @@ function scorePourPeriode(
   return scoreRubriqueArbre(rubrique_id, fichier.rubriques, tests, index);
 }
 
+/** Périodes de l'année, de la première à la dernière. */
+function periodesTriees(fichier: FichierClasse): Periode[] {
+  return [...fichier.periodes].sort((a, b) => a.numero - b.numero);
+}
+
+/**
+ * Total général d'un jeu de lignes : seules les rubriques principales cotées en
+ * points comptent — les sous-rubriques y sont déjà comprises, et une échelle
+ * littérale ne s'additionne pas. `null` quand rien n'est coté.
+ */
+function totaliser(scores: readonly (number | null)[]): number | null {
+  const cotes = scores.filter((s): s is number => s !== null);
+  return cotes.length === 0 ? null : Math.round(cotes.reduce((s, v) => s + v, 0) * 10) / 10;
+}
+
 /** Compose le bulletin d'un élève pour une période. */
 export function construireBulletin(
   fichier: FichierClasse,
@@ -91,6 +119,12 @@ export function construireBulletin(
   const eleve = fichier.eleves.find((e) => e.id === eleve_id);
   const periode = fichier.periodes.find((p) => p.id === periode_id);
   if (!eleve || !periode) return null;
+
+  // Sur la dernière période seulement, on rappelle les périodes précédentes.
+  const ordonnees = periodesTriees(fichier);
+  const derniere = ordonnees[ordonnees.length - 1];
+  const periodesAnterieures =
+    derniere && derniere.id === periode.id ? ordonnees.slice(0, -1) : [];
 
   const lignes: LigneBulletin[] = [];
 
@@ -105,6 +139,9 @@ export function construireBulletin(
       type: rubrique.type,
       maximum: rubrique.maximum,
       score,
+      scoresAnterieurs: enEchelle
+        ? periodesAnterieures.map(() => null)
+        : periodesAnterieures.map((p) => scorePourPeriode(fichier, rubrique.id, eleve.id, p.id)),
       cotation: enEchelle ? cotationDe(fichier, rubrique.id, eleve.id, periode.id) : null,
       moyenne: enEchelle
         ? null
@@ -118,10 +155,7 @@ export function construireBulletin(
 
   for (const racine of racines(fichier.rubriques)) ajouterLigne(racine, 0);
 
-  // Le total ne porte que sur les rubriques principales cotées en points : les
-  // sous-rubriques y sont déjà comprises, et une échelle littérale ne s'additionne pas.
   const principales = lignes.filter((l) => l.niveau === 0 && l.type === 'points');
-  const cotees = principales.filter((l) => l.score !== null);
 
   return {
     eleve,
@@ -129,14 +163,15 @@ export function construireBulletin(
     ecole: fichier.annee.ecole,
     titulaire: fichier.annee.titulaire,
     anneeScolaire: fichier.annee.libelle,
+    periodesAnterieures,
     lignes,
     commentaire:
       fichier.commentaires.find((c) => c.eleve_id === eleve.id && c.periode_id === periode.id)
         ?.texte ?? '',
-    total:
-      cotees.length === 0
-        ? null
-        : Math.round(cotees.reduce((s, l) => s + (l.score ?? 0), 0) * 10) / 10,
+    total: totaliser(principales.map((l) => l.score)),
+    totauxAnterieurs: periodesAnterieures.map((_, i) =>
+      totaliser(principales.map((l) => l.scoresAnterieurs[i] ?? null)),
+    ),
     totalMaximum: principales.reduce((s, l) => s + l.maximum, 0),
   };
 }
