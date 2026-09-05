@@ -171,43 +171,45 @@ input[type='number'] {
  * 4. Thème sombre — les rôles seuls sont remappés.
  *
  * Une salle des profs en fin de journée, un projecteur, un portable dans une
- * classe mal éclairée : le thème suit le système, sans réglage à expliquer.
+ * classe mal éclairée. Le clair reste le thème par défaut, y compris sur un
+ * système réglé en sombre : c'est le rendu le plus proche du bulletin
+ * imprimé, et c'est ce que le titulaire voit sans rien avoir à régler. Le
+ * sombre s'obtient par le bouton de la barre d'outils, qui pose
+ * `data-theme="sombre"` sur <html> (voir `src/etat/theme.svelte.ts`).
  * ------------------------------------------------------------------ */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
+:root[data-theme='sombre'] {
+  color-scheme: dark;
 
-    --fond: #14130f;
-    --surface: #1c1a16;
-    --surface-douce: #23201b;
-    --surface-appuyee: #2b2721;
+  --fond: #14130f;
+  --surface: #1c1a16;
+  --surface-douce: #23201b;
+  --surface-appuyee: #2b2721;
 
-    --trait: #35302a;
-    --trait-fort: #4a443b;
+  --trait: #35302a;
+  --trait-fort: #4a443b;
 
-    --encre: #f2efe8;
-    --encre-douce: #b3aa9c;
-    --encre-tenue: #8d8477;
+  --encre: #f2efe8;
+  --encre-douce: #b3aa9c;
+  --encre-tenue: #8d8477;
 
-    --accent: var(--c-300);
-    --accent-fort: var(--c-200);
-    --accent-doux: #12302f;
-    --accent-trait: #1d4b4c;
-    --sur-accent: #06211f;
+  --accent: var(--c-300);
+  --accent-fort: var(--c-200);
+  --accent-doux: #12302f;
+  --accent-trait: #1d4b4c;
+  --sur-accent: #06211f;
 
-    --alerte: #f0a196;
-    --alerte-fond: #3a1b17;
-    --ok: #8fc9a3;
-    --ok-fond: #17301f;
-    --attention: #e0b872;
-    --attention-fond: #362713;
+  --alerte: #f0a196;
+  --alerte-fond: #3a1b17;
+  --ok: #8fc9a3;
+  --ok-fond: #17301f;
+  --attention: #e0b872;
+  --attention-fond: #362713;
 
-    --anneau: 0 0 0 2px var(--surface), 0 0 0 4px var(--c-400);
+  --anneau: 0 0 0 2px var(--surface), 0 0 0 4px var(--c-400);
 
-    --ombre-1: 0 1px 2px rgb(0 0 0 / 40%);
-    --ombre-2: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 12px -4px rgb(0 0 0 / 50%);
-    --ombre-3: 0 12px 32px -10px rgb(0 0 0 / 70%);
-  }
+  --ombre-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --ombre-2: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 12px -4px rgb(0 0 0 / 50%);
+  --ombre-3: 0 12px 32px -10px rgb(0 0 0 / 70%);
 }
 
 /* ------------------------------------------------------------------ *
