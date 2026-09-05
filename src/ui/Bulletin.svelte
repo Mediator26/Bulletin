@@ -334,7 +334,14 @@
       border: 0;
       border-radius: 0;
       box-shadow: none;
-      padding: 0;
+      /*
+       * La marge blanche du bulletin imprime en deux temps : `@page` réserve la
+       * marge physique de la feuille, ce rembourrage ajoute l'air qui fait
+       * ressembler la page papier à l'aperçu à l'écran. Certains navigateurs
+       * laissent l'utilisateur réduire les marges de `@page` dans la boîte
+       * d'impression ; le rembourrage, lui, ne peut pas lui être retiré.
+       */
+      padding: 6mm 8mm;
       margin: 0;
       max-width: none;
       break-after: page;
