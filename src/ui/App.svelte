@@ -486,6 +486,17 @@
     padding: var(--e5);
   }
 
+  /*
+   * Impression : la marge de la feuille est celle de `@page` et d'elle seule.
+   * Le rembourrage de `main`, qui aère l'écran, s'ajouterait sinon aux 12/14 mm
+   * et décalerait le bulletin imprimé par rapport à l'aperçu.
+   */
+  @media print {
+    main {
+      padding: 0;
+    }
+  }
+
   /* ---------- Accueil ---------- */
   .accueil {
     max-width: 54rem;
