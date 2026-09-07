@@ -214,8 +214,7 @@
   {#if !fichier}
     <section class="accueil">
       <h1>Par quoi commencer ?</h1>
-      <p class="chapeau">
-        Ce fichier est l'<em>application</em>. Les données de chaque classe vivent dans un
+      <p class="chapeau">Les données de chaque classe vivent dans un
         fichier <code>.json</code> distinct, à conserver sur le Drive de l'école.
       </p>
 
