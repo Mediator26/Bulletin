@@ -159,7 +159,7 @@ describe('deplacerRubrique', () => {
     expect(enfantsDe(f.rubriques, 'francais').map((r) => r.libelle)).toEqual([
       'Écouter',
       'Parler',
-      'Lire-écrire',
+      'Lire',
       'Écrire',
       'Expression écrite',
     ]);

@@ -42,44 +42,67 @@ function coter(rubrique: string, periode: string, valeur: number | null, statut?
 }
 
 describe('récapitulatif des périodes précédentes', () => {
-  it('ne rappelle rien tant qu’on n’est pas à la dernière période', () => {
+  it('ne rappelle rien sur le bulletin de la première période', () => {
     const b = construireBulletin(f, eleve.id, p(0))!;
     expect(b.periodesAnterieures).toEqual([]);
-    expect(b.totauxAnterieurs).toEqual([]);
     expect(b.lignes.every((l) => l.scoresAnterieurs.length === 0)).toBe(true);
   });
 
-  it('rappelle les périodes précédentes sur le bulletin de la dernière', () => {
+  it('rappelle toutes les périodes précédentes, dès la deuxième', () => {
+    expect(construireBulletin(f, eleve.id, p(1))!.periodesAnterieures.map((x) => x.numero)).toEqual([
+      1,
+    ]);
+    expect(construireBulletin(f, eleve.id, p(2))!.periodesAnterieures.map((x) => x.numero)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it('reprend les points déjà cotés à côté de ceux de la période', () => {
     const parler = f.rubriques.find((r) => r.libelle === 'Parler')!;
     coter(parler.id, p(0), 6);
     coter(parler.id, p(1), 8);
     coter(parler.id, p(2), 9);
 
-    const derniere = f.periodes.length - 1;
-    const b = construireBulletin(f, eleve.id, p(derniere))!;
-    expect(b.periodesAnterieures.map((x) => x.numero)).toEqual(
-      f.periodes.slice(0, derniere).map((x) => x.numero),
-    );
-
-    // Le test vaut 10, la sous-rubrique aussi : le score est la note brute.
+    const b = construireBulletin(f, eleve.id, p(2))!;
     const l = ligne(b, parler.id);
-    expect(l.scoresAnterieurs.length).toBe(b.periodesAnterieures.length);
-    expect(l.scoresAnterieurs[0]).toBe(6);
-    expect(l.scoresAnterieurs[1]).toBe(8);
+    // Le test vaut 10, la sous-rubrique aussi : le score est la note brute.
+    expect(l.scoresAnterieurs).toEqual([6, 8]);
     expect(l.score).toBe(9);
   });
 
-  it('totalise chaque période rappelée comme la période courante', () => {
-    const francais = f.rubriques.find((r) => r.libelle === 'Français')!;
-    const parler = f.rubriques.find((r) => r.libelle === 'Parler')!;
-    coter(parler.id, p(0), 5);
-    const derniere = f.periodes.length - 1;
-    const b = construireBulletin(f, eleve.id, p(derniere))!;
-    // « Parler » vaut 10 des 100 points de Français : 5/10 pèse 5 points au total.
-    expect(b.totauxAnterieurs[0]).toBe(5);
-    expect(francais.maximum).toBe(100);
-    // Rien d'encodé sur la deuxième période : « — », jamais 0.
-    expect(b.totauxAnterieurs[1]).toBeNull();
+  it('laisse « — » à une période rappelée sans encodage, jamais 0', () => {
+    coter('neerlandais', p(0), 5); // 5/10 × 20 = 10
+    const b = construireBulletin(f, eleve.id, p(2))!;
+    expect(ligne(b, 'neerlandais').scoresAnterieurs).toEqual([10, null]);
+  });
+
+  it('rappelle les cotations littérales des périodes précédentes', () => {
+    definirCotation(f, 'comportement', eleve.id, p(0), 'TB');
+    definirCotation(f, 'comportement', eleve.id, p(2), 'B');
+
+    const b = construireBulletin(f, eleve.id, p(2))!;
+    const l = ligne(b, 'comportement');
+    expect(l.cotationsAnterieures).toEqual(['TB', null]);
+    expect(l.cotation).toBe('B');
+  });
+
+  it('rappelle les commentaires des périodes précédentes, dans l’ordre', () => {
+    definirCommentaire(f, eleve.id, p(0), 'Trimestre solide.');
+    definirCommentaire(f, eleve.id, p(1), 'Doit persévérer.');
+    definirCommentaire(f, eleve.id, p(2), 'Belle progression.');
+
+    const b = construireBulletin(f, eleve.id, p(2))!;
+    expect(b.commentairesAnterieurs.map((c) => [c.periode.numero, c.texte])).toEqual([
+      [1, 'Trimestre solide.'],
+      [2, 'Doit persévérer.'],
+    ]);
+    expect(b.commentaire).toBe('Belle progression.');
+  });
+
+  it('omet une période précédente restée sans commentaire', () => {
+    definirCommentaire(f, eleve.id, p(1), 'Doit persévérer.');
+    const b = construireBulletin(f, eleve.id, p(2))!;
+    expect(b.commentairesAnterieurs.map((c) => c.periode.numero)).toEqual([2]);
   });
 });
 
@@ -116,41 +139,32 @@ describe('construireBulletin — scores', () => {
   it('laisse un bulletin vierge entièrement vide, sans aucun 0', () => {
     const b = construireBulletin(f, eleve.id, p(0))!;
     expect(b.lignes.every((l) => l.score === null)).toBe(true);
-    expect(b.total).toBeNull();
   });
 
-  it('agrège une sous-rubrique dans sa rubrique principale', () => {
-    coter('francais.parler', p(0), 8); // 8/10 × 10 = 8
+  it('cote une matière au prorata de ses seules sous-rubriques évaluées', () => {
+    coter('francais.ecrire', p(0), 8); // « Écrire » vaut 20 : 8/10 → 16/20
     const b = construireBulletin(f, eleve.id, p(0))!;
-    expect(ligne(b, 'francais.parler').score).toBe(8);
-    expect(ligne(b, 'francais').score).toBe(8);
+    expect(ligne(b, 'francais.ecrire').score).toBe(16);
+    // Rien d'autre n'a été évalué en français : 16/20 se lit 80/100.
+    expect(ligne(b, 'francais').score).toBe(80);
   });
 
-  it('totalise les seules rubriques principales, sans compter deux fois les filles', () => {
-    coter('francais.parler', p(0), 8); // Français : 8
-    coter('neerlandais', p(0), 5); // Néerlandais : 5/10 × 20 = 10
+  it('laisse les sous-rubriques non évaluées vides, sans les compter pour zéro', () => {
+    coter('francais.ecrire', p(0), 8);
     const b = construireBulletin(f, eleve.id, p(0))!;
-    expect(b.total).toBe(18);
-  });
-
-  it('annonce le total maximum des rubriques principales', () => {
-    const b = construireBulletin(f, eleve.id, p(0))!;
-    // 100 + 100 + 100 + 20 + 20 ; les trois échelles valent 0
-    expect(b.totalMaximum).toBe(340);
+    expect(ligne(b, 'francais.parler').score).toBeNull();
+    expect(ligne(b, 'francais.lire').score).toBeNull();
   });
 
   it('sort un test non présenté du calcul sans le transformer en 0', () => {
     coter('neerlandais', p(0), null, 'absent');
     const b = construireBulletin(f, eleve.id, p(0))!;
     expect(ligne(b, 'neerlandais').score).toBeNull();
-    expect(b.total).toBeNull();
   });
 
-  it('laisse un 0 encodé peser dans le total', () => {
+  it('laisse un 0 encodé peser dans la rubrique', () => {
     coter('neerlandais', p(0), 0);
-    const b = construireBulletin(f, eleve.id, p(0))!;
-    expect(ligne(b, 'neerlandais').score).toBe(0);
-    expect(b.total).toBe(0);
+    expect(ligne(construireBulletin(f, eleve.id, p(0)), 'neerlandais').score).toBe(0);
   });
 });
 
@@ -186,7 +200,7 @@ describe('construireBulletin — échelles et commentaires', () => {
     expect(ligne(b, 'comportement').moyenne).toBeNull();
   });
 
-  it('reporte le commentaire de la période, et lui seul', () => {
+  it('reporte le commentaire de la période dans la zone du jour', () => {
     definirCommentaire(f, eleve.id, p(0), 'Trimestre solide.');
     definirCommentaire(f, eleve.id, p(1), 'Doit persévérer.');
     expect(construireBulletin(f, eleve.id, p(0))!.commentaire).toBe('Trimestre solide.');

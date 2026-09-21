@@ -15,7 +15,25 @@ export type Chargement =
 
 /** Migrations successives, indexées par la version dont elles partent. */
 const MIGRATIONS: Record<number, (brut: Record<string, unknown>) => Record<string, unknown>> = {
-  // 0: (brut) => ({ ...brut, schemaVersion: 1, cotations: [] }),
+  /**
+   * 1 → 2 : « Lire-écrire » devient « Lire ».
+   *
+   * Le libellé seul change ; l'`id` de la rubrique reste le sien, sans quoi les
+   * tests et les résultats déjà encodés perdraient leur rattachement. Une
+   * rubrique que le titulaire aurait lui-même renommée n'est pas touchée.
+   */
+  1: (brut) => {
+    const rubriques = brut['rubriques'];
+    if (!Array.isArray(rubriques)) return { ...brut, schemaVersion: 2 };
+    return {
+      ...brut,
+      schemaVersion: 2,
+      rubriques: rubriques.map((r) => {
+        const rubrique = r as Record<string, unknown> | null;
+        return rubrique?.['libelle'] === 'Lire-écrire' ? { ...rubrique, libelle: 'Lire' } : r;
+      }),
+    };
+  },
 };
 
 const COLLECTIONS = [

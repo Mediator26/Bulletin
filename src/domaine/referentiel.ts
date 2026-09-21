@@ -28,7 +28,7 @@ const MODELE: Modele[] = [
     enfants: [
       { cle: 'parler', libelle: 'Parler', maximum: 10, type: 'points' },
       { cle: 'ecouter', libelle: 'Écouter', maximum: 10, type: 'points' },
-      { cle: 'lire-ecrire', libelle: 'Lire-écrire', maximum: 40, type: 'points' },
+      { cle: 'lire', libelle: 'Lire', maximum: 40, type: 'points' },
       { cle: 'ecrire', libelle: 'Écrire', maximum: 20, type: 'points' },
       { cle: 'expression-ecrite', libelle: 'Expression écrite', maximum: 20, type: 'points' },
     ],
@@ -107,7 +107,7 @@ export function rubriquesSaisissables(rubriques: readonly Rubrique[]): Rubrique[
     .sort((a, b) => cheminOrdre(a, rubriques).localeCompare(cheminOrdre(b, rubriques)));
 }
 
-/** Clé de tri qui respecte la hiérarchie : « 01.03 » pour Français → Lire-écrire. */
+/** Clé de tri qui respecte la hiérarchie : « 01.03 » pour Français → Lire. */
 function cheminOrdre(rubrique: Rubrique, rubriques: readonly Rubrique[]): string {
   const segments: string[] = [];
   let courante: Rubrique | undefined = rubrique;
@@ -128,7 +128,7 @@ function cheminOrdre(rubrique: Rubrique, rubriques: readonly Rubrique[]): string
  */
 export const SEPARATEUR_CHEMIN = ' › ';
 
-/** Libellé complet d'une rubrique, parents compris : « Français › Lire-écrire ». */
+/** Libellé complet d'une rubrique, parents compris : « Français › Lire ». */
 export function cheminLibelle(rubrique: Rubrique, rubriques: readonly Rubrique[]): string {
   const segments: string[] = [];
   let courante: Rubrique | undefined = rubrique;

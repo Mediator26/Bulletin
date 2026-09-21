@@ -52,6 +52,35 @@ describe('chargerClasse', () => {
   });
 });
 
+describe('migration du schéma', () => {
+  /** Fichier tel qu'il était enregistré avant le renommage de « Lire-écrire ». */
+  const schema1 = () => ({
+    ...vierge(),
+    schemaVersion: 1,
+    rubriques: [
+      { id: 'francais.lire-ecrire', annee_id: 'annee-1', parent_id: 'francais', libelle: 'Lire-écrire', maximum: 40, type: 'points', ordre: 3 },
+      { id: 'francais.parler', annee_id: 'annee-1', parent_id: 'francais', libelle: 'Parler', maximum: 10, type: 'points', ordre: 1 },
+    ],
+  });
+
+  it('renomme « Lire-écrire » en « Lire » sans toucher à l’identifiant', () => {
+    const r = chargerClasse(JSON.stringify(schema1()));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.migre).toBe(true);
+      const rubrique = r.fichier.rubriques.find((x) => x.id === 'francais.lire-ecrire')!;
+      // L'id survit : les tests et les résultats déjà encodés y restent accrochés.
+      expect(rubrique.libelle).toBe('Lire');
+      expect(rubrique.maximum).toBe(40);
+    }
+  });
+
+  it('laisse les autres rubriques intactes', () => {
+    const r = chargerClasse(JSON.stringify(schema1()));
+    if (r.ok) expect(r.fichier.rubriques.find((x) => x.id === 'francais.parler')!.libelle).toBe('Parler');
+  });
+});
+
 describe('serialiserClasse', () => {
   it('force toujours le schéma courant et trace la version productrice', () => {
     const texte = serialiserClasse({ ...vierge(), schemaVersion: 0 }, '1.2.3');

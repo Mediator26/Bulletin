@@ -1,7 +1,8 @@
 # Bulletin scolaire — mode d'emploi
 
 **En une phrase :** cet outil remplace le classeur Excel des bulletins. Vous encodez
-les points de votre classe, il calcule les totaux et imprime les bulletins.
+les points de votre classe, il calcule les points de chaque matière et imprime les
+bulletins.
 
 ## Pourquoi c'est mieux que le classeur
 
@@ -10,7 +11,12 @@ les points de votre classe, il calcule les totaux et imprime les bulletins.
   précédent. Ici, chaque élève a ses propres résultats, quel que soit leur nombre.
 - **Le calcul au prorata est fait pour vous.** Un test qu'un élève n'a pas présenté
   sort du calcul : il n'est jamais compté comme un zéro. Un 0 que vous encodez,
-  lui, est un vrai 0.
+  lui, est un vrai 0. Une sous-rubrique sur laquelle vous n'avez donné aucun test
+  sort du calcul de la même façon : si votre seul test de français est un « Écrire »
+  sur 10 réussi 8/10, l'élève est coté **80/100** en français, et non 16/100.
+- **Chaque bulletin rappelle les périodes précédentes.** Points, cotations
+  TB · B · S · F · I et commentaires déjà remis figurent à côté de ceux de la
+  période : un seul bulletin donne le parcours de l'année.
 - **Rien à installer, aucun compte, aucune mise à jour à faire vous-même.**
 - **Ça peut fonctionner sans internet** (voir ci-dessous).
 - **Vos données ne partent nulle part.** Elles restent dans un fichier, sur le
@@ -61,7 +67,7 @@ Drive partagé/
    « Réglages ».)* La liste se range toute seule par ordre alphabétique.
 3. **Choisir la période.** Dans la barre du haut : « Période 1 », « 2 » ou « 3 »,
    et remplissez la « Date du bulletin » — c'est elle qui s'imprimera.
-4. **Créer vos tests.** Chaque rubrique (Français › Lire-écrire, Mathématiques ›
+4. **Créer vos tests.** Chaque rubrique (Français › Lire, Mathématiques ›
    Géométrie…) a son propre encadré. Tapez le nom du test, son maximum, puis
    « Ajouter ».
 5. **Encoder.** Une ligne par élève, une colonne par test. Tout se fait au clavier
@@ -109,10 +115,12 @@ Les demi-points s'écrivent avec une virgule : `12,5`.
 
 - **La moyenne annuelle reste vide** tant qu'une seule période est encodée : une
   moyenne sur un seul bulletin n'est pas une moyenne.
-- **Les colonnes des périodes précédentes n'apparaissent que sur le bulletin de la
-  dernière période**, qui récapitule alors l'année entière.
-- **Un « — » signifie « aucun test présenté »**, pas zéro : la rubrique ne compte
-  pas dans le total.
+- **Les colonnes des périodes précédentes n'apparaissent pas sur le bulletin de la
+  période 1** : il n'y a encore rien à rappeler.
+- **Un « — » signifie « aucun test présenté »**, pas zéro : la rubrique est écartée
+  du calcul au lieu d'y compter pour rien.
+- **Il n'y a plus de total général** (l'ancien « /340 ») : additionner un français
+  sur 100 et un néerlandais sur 20 ne donnait pas un nombre lisible.
 - **Pas de bouton « archiver ».** Pour garder une trace d'une fin de période,
   dupliquez simplement le fichier sur le Drive en le renommant, par exemple
   `4e-A-2025-2026_P2-cloture.json`.

@@ -80,7 +80,7 @@ describe('rubriquesSaisissables', () => {
 
 describe('cheminLibelle', () => {
   it('affiche le chemin complet depuis la racine', () => {
-    expect(cheminLibelle(parCle('francais.lire-ecrire'), rubriques)).toBe('Français › Lire-écrire');
+    expect(cheminLibelle(parCle('francais.lire'), rubriques)).toBe('Français › Lire');
   });
 
   it('se réduit au libellé pour une racine', () => {
@@ -103,7 +103,7 @@ describe('intégration référentiel + moteur', () => {
     expect(scoreRubriqueArbre('francais', rubriques, new Map(), new Map())).toBeNull();
   });
 
-  it('additionne les sous-rubriques cotées du Français', () => {
+  it('ramène les sous-rubriques cotées du Français au maximum de la matière', () => {
     const tests = new Map([
       ['t1', { id: 't1', periode_id: 'p1', rubrique_id: 'francais.parler', libelle: 'Exposé', maximum: 20, ordre: 1 }],
       ['t2', { id: 't2', periode_id: 'p1', rubrique_id: 'francais.ecrire', libelle: 'Dictée', maximum: 10, ordre: 1 }],
@@ -112,7 +112,9 @@ describe('intégration référentiel + moteur', () => {
       ['francais.parler', [{ test_id: 't1', eleve_id: 'e1', valeur: 15, statut: 'presente' as const }]],
       ['francais.ecrire', [{ test_id: 't2', eleve_id: 'e1', valeur: 5, statut: 'presente' as const }]],
     ]);
-    // Parler : 15/20 × 10 = 7,5 · Écrire : 5/10 × 20 = 10
-    expect(scoreRubriqueArbre('francais', rubriques, tests, resultats)).toBe(17.5);
+    // Parler : 15/20 × 10 = 7,5 · Écrire : 5/10 × 20 = 10.
+    // Seules ces deux sous-rubriques ont été évaluées : 17,5 sur les 30 points
+    // cotés, soit 58,3 sur 100 — les trois autres ne comptent pas pour zéro.
+    expect(scoreRubriqueArbre('francais', rubriques, tests, resultats)).toBe(58.3);
   });
 });

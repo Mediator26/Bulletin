@@ -96,7 +96,7 @@ export interface Observation {
 }
 
 /** Version du schéma de fichier — voir C4 (dérive de version). */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface FichierClasse {
   schemaVersion: number;

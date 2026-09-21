@@ -46,9 +46,20 @@ export function enfantsDe(rubriques: readonly Rubrique[], parent_id: Id | null):
 /**
  * Score d'une rubrique quelconque, feuille ou branche.
  *
- * Une branche est la somme de ses filles — une agrégation, pas une formule
- * recopiée (§2.4, décision 3). Si aucune fille n'a de score, la branche vaut
- * `null` : un bulletin sans encodage reste vide au lieu d'afficher 0.
+ * Une branche est l'agrégation de ses filles, pas une formule recopiée
+ * (§2.4, décision 3) — et cette agrégation suit le même prorata que les tests :
+ * une sous-rubrique sur laquelle aucun test n'a été donné sort de la base au
+ * lieu d'y peser zéro.
+ *
+ *   score_branche = arrondi( Σ(scores cotés) / Σ(max des filles cotées) × max_branche , 1)
+ *
+ * Français vaut 100, mais si le trimestre n'a comporté qu'un test d'« Écrire »
+ * (sous-rubrique sur 20) réussi 8/10, l'élève est coté 16/20 dans la seule
+ * partie évaluée, donc 80/100 en Français — et non 16/100, qui compterait les
+ * quatre sous-rubriques non évaluées comme autant de zéros.
+ *
+ * Si aucune fille n'est cotée, la branche vaut `null` : un bulletin sans
+ * encodage reste vide au lieu d'afficher 0.
  */
 export function scoreRubriqueArbre(
   rubriqueId: Id,
@@ -64,16 +75,17 @@ export function scoreRubriqueArbre(
     return scoreRubrique(resultatsParRubrique.get(rubriqueId) ?? [], tests, rubrique.maximum);
   }
 
-  let total = 0;
-  let auMoinsUn = false;
+  let obtenu = 0;
+  let base = 0;
   for (const enfant of enfants) {
     const score = scoreRubriqueArbre(enfant.id, rubriques, tests, resultatsParRubrique);
-    if (score !== null) {
-      total += score;
-      auMoinsUn = true;
-    }
+    if (score === null) continue; // rien d'encodé : hors base, jamais un 0
+    obtenu += score;
+    base += enfant.maximum;
   }
-  return auMoinsUn ? arrondiDixieme(total) : null;
+  if (base === 0) return null;
+
+  return arrondiDixieme((obtenu / base) * rubrique.maximum);
 }
 
 /**

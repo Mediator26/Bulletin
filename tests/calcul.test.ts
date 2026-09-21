@@ -85,27 +85,54 @@ describe('scoreRubriqueArbre — agrégation Français → sous-rubriques', () =
     { id: 'fr', annee_id: 'a', parent_id: null, libelle: 'Français', maximum: 100, type: 'points', ordre: 1 },
     { id: 'parler', annee_id: 'a', parent_id: 'fr', libelle: 'Parler', maximum: 10, type: 'points', ordre: 1 },
     { id: 'ecouter', annee_id: 'a', parent_id: 'fr', libelle: 'Écouter', maximum: 10, type: 'points', ordre: 2 },
-    { id: 'lire', annee_id: 'a', parent_id: 'fr', libelle: 'Lire-écrire', maximum: 40, type: 'points', ordre: 3 },
+    { id: 'lire', annee_id: 'a', parent_id: 'fr', libelle: 'Lire', maximum: 40, type: 'points', ordre: 3 },
+    { id: 'ecrire', annee_id: 'a', parent_id: 'fr', libelle: 'Écrire', maximum: 20, type: 'points', ordre: 4 },
+    { id: 'expression', annee_id: 'a', parent_id: 'fr', libelle: 'Expression écrite', maximum: 20, type: 'points', ordre: 5 },
     { id: 'compo', annee_id: 'a', parent_id: null, libelle: 'Comportement', maximum: 0, type: 'echelle', ordre: 9 },
   ];
   const tests = indexerTests([
     test('tp', 10, 'parler'),
     test('te', 20, 'ecouter'),
     test('tl', 40, 'lire'),
+    test('tw', 10, 'ecrire'),
+    test('tx', 10, 'expression'),
   ]);
 
-  it('somme les sous-rubriques cotées', () => {
+  it('somme les sous-rubriques quand toute la branche est cotée', () => {
     const index = new Map([
-      ['parler', [resultat('tp', 9)]],
+      ['parler', [resultat('tp', 9)]], // 9/10 × 10 = 9
       ['ecouter', [resultat('te', 15)]], // 15/20 × 10 = 7,5
-      ['lire', [resultat('tl', 30)]],
+      ['lire', [resultat('tl', 30)]], // 30/40 × 40 = 30
+      ['ecrire', [resultat('tw', 8)]], // 8/10 × 20 = 16
+      ['expression', [resultat('tx', 5)]], // 5/10 × 20 = 10
     ]);
-    expect(scoreRubriqueArbre('fr', rubriques, tests, index)).toBe(46.5);
+    // Base = 100, soit le maximum de la branche : la somme est le score.
+    expect(scoreRubriqueArbre('fr', rubriques, tests, index)).toBe(72.5);
   });
 
-  it('ignore une sous-rubrique non encodée sans annuler le total', () => {
-    const index = new Map([['parler', [resultat('tp', 9)]]]);
-    expect(scoreRubriqueArbre('fr', rubriques, tests, index)).toBe(9);
+  it('sort de la base une sous-rubrique sur laquelle aucun test n’a été donné', () => {
+    // Seul « Écrire » (sur 20) a été évalué : 8/10 y vaut 16/20, donc 80/100 —
+    // les quatre autres sous-rubriques ne pèsent pas zéro, elles ne pèsent rien.
+    const index = new Map([['ecrire', [resultat('tw', 8)]]]);
+    expect(scoreRubriqueArbre('fr', rubriques, tests, index)).toBe(80);
+  });
+
+  it('ramène plusieurs sous-rubriques cotées au maximum de la branche', () => {
+    const index = new Map([
+      ['parler', [resultat('tp', 9)]], // 9 sur 10
+      ['ecrire', [resultat('tw', 8)]], // 16 sur 20
+    ]);
+    // 25 points sur les 30 réellement cotés → 83,3 sur 100.
+    expect(scoreRubriqueArbre('fr', rubriques, tests, index)).toBe(83.3);
+  });
+
+  it('fait entrer un 0 encodé dans la base, comme pour un test', () => {
+    const index = new Map([
+      ['parler', [resultat('tp', 0)]], // 0 sur 10
+      ['ecrire', [resultat('tw', 10)]], // 20 sur 20
+    ]);
+    // 20 / 30 × 100 = 66,7 — le 0 compte, il n'est pas une absence.
+    expect(scoreRubriqueArbre('fr', rubriques, tests, index)).toBe(66.7);
   });
 
   it("rend null quand aucune sous-rubrique n'est encodée", () => {

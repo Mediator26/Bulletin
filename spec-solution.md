@@ -172,8 +172,9 @@ Quatre décisions qui suppriment les défauts 1, 8 et 10 par construction :
    une absence en sort. Le défaut n° 8 disparaît.
 2. **Le nombre d'élèves, de tests et de périodes est une donnée**, pas une plage
    de cellules → plus de désynchronisation 35 / 32 / 29 / 30 (défaut n° 1).
-3. **`rubrique.parent_id`** → l'arborescence Français → Lire‑écrire est native,
-   les totaux sont des agrégations, pas des formules recopiées.
+3. **`rubrique.parent_id`** → l'arborescence Français → Lire est native
+   (la sous‑rubrique « Lire‑écrire » du classeur a été renommée « Lire »), et
+   les rubriques principales sont des agrégations, pas des formules recopiées.
 4. **`annee_id` sur les rubriques** → chaque année fige son référentiel :
    modifier ses pondérations en 2027 ne corrompt pas les bulletins de 2025.
 
@@ -197,6 +198,23 @@ aujourd'hui : élève entièrement absent · 0 légitime · rubrique sans aucun 
 encodé · élève au‑delà de la capacité de la liste · moyenne annuelle avec un
 seul bulletin complété (doit rester vide, comme le `IF(S7<2;"")` actuel).
 
+**Agrégation d'une branche.** Une rubrique principale n'est pas la somme brute
+de ses filles : elle applique le même prorata, une marche plus haut. Une
+sous‑rubrique sur laquelle aucun test n'a été donné sort de la base, au lieu
+d'y peser zéro.
+
+```
+score_branche = arrondi( Σ(scores des filles cotées) / Σ(max des filles cotées) × max_branche , 1 )
+```
+
+Un unique test d'« Écrire » (sous‑rubrique sur 20) réussi 8/10 donne donc
+80/100 en Français, et non 16/100. C'est la seule règle qui s'écarte du
+classeur, lequel faisait peser les sous‑rubriques vides comme des zéros.
+
+**Pas de total général.** Additionner Français /100, Néerlandais /20 et
+Éducation physique /20 produisait un « /340 » que personne ne lit — un nombre
+sans référentiel commun. Le bulletin s'arrête aux rubriques principales.
+
 ### 2.6 Impression
 
 ```css
@@ -209,7 +227,10 @@ seul bulletin complété (doit rester vide, comme le `IF(S7<2;"")` actuel).
 ```
 
 Le recto porte les points, le verso les commentaires et les signatures —
-la structure du modèle actuel se transpose directement. Le nom du PDF proposé
+la structure du modèle actuel se transpose directement. Chaque bulletin est
+cumulatif : à gauche de la période imprimée, il rappelle les points, les
+cotations TB‑B‑S‑F‑I et les commentaires de toutes les périodes précédentes,
+de sorte qu'un seul bulletin suffit à lire le parcours de l'année. Le nom du PDF proposé
 par le navigateur est piloté par `document.title` : le fixer à
 `Bulletin-P2-Dupont-Julien` avant d'appeler `window.print()` donne un nommage
 automatique gratuit.

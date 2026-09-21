@@ -61,7 +61,10 @@
             <tr class:principale={ligne.niveau === 0} class:sous-rubrique={ligne.niveau > 0}>
               <th scope="row" style="padding-left: {0.5 + ligne.niveau * 1.2}rem">{ligne.libelle}</th>
               {#if ligne.type === 'echelle'}
-                <td class="echelle" colspan={3 + bulletin.periodesAnterieures.length}>
+                {#each ligne.cotationsAnterieures as anterieure, i (bulletin.periodesAnterieures[i]!.id)}
+                  <td class="note anterieure">{anterieure ?? '—'}</td>
+                {/each}
+                <td class="echelle" colspan="3">
                   {#each ECHELLE as cote (cote)}
                     <span class="cote" class:retenue={ligne.cotation === cote}>{cote}</span>
                   {/each}
@@ -77,31 +80,35 @@
             </tr>
           {/each}
         </tbody>
-        <tfoot>
-          <tr>
-            <th scope="row">Total</th>
-            {#each bulletin.totauxAnterieurs as anterieur, i (bulletin.periodesAnterieures[i]!.id)}
-              <td class="note anterieure">{afficherScore(anterieur)}</td>
-            {/each}
-            <td class="note">{afficherScore(bulletin.total)}</td>
-            <td class="note maximum">{bulletin.totalMaximum}</td>
-            <td class="note"></td>
-          </tr>
-        </tfoot>
       </table>
     </div>
 
     <p class="legende">
-      « — » signale une rubrique dont aucun test n'a été présenté : elle ne compte pas dans le
-      total. Les tests non présentés sont exclus du calcul, qui se fait au prorata des seuls
-      tests passés.
+      « — » signale une rubrique dont aucun test n'a été présenté : elle est écartée du calcul
+      au lieu d'y compter pour zéro. Une matière est cotée au prorata de ce qui a été évalué —
+      un seul test d'une sous-rubrique sur 20, réussi 16/20, donne 80/100 à la matière entière.
     </p>
   </section>
 
   <!-- Verso -->
   <section class="page verso">
     <h2>Observations du titulaire</h2>
-    <div class="commentaire">{bulletin.commentaire}</div>
+
+    <!-- Les commentaires des périodes précédentes sont rappelés au-dessus du
+         dernier : les parents relisent l'année, pas un trimestre isolé. -->
+    {#each bulletin.commentairesAnterieurs as precedent (precedent.periode.id)}
+      <div class="commentaire anterieur">
+        <p class="periode-commentaire">Période {precedent.periode.numero}</p>
+        <div class="texte">{precedent.texte}</div>
+      </div>
+    {/each}
+
+    <div class="commentaire" class:seul={bulletin.commentairesAnterieurs.length === 0}>
+      {#if bulletin.periodesAnterieures.length > 0}
+        <p class="periode-commentaire">Période {bulletin.periode.numero}</p>
+      {/if}
+      <div class="texte">{bulletin.commentaire}</div>
+    </div>
 
     <div class="signatures">
       <div><span class="ligne-signature"></span>Le titulaire</div>
@@ -273,15 +280,6 @@
     color: var(--papier-douce);
   }
 
-  tfoot th,
-  tfoot td {
-    border-top: 1pt solid var(--papier-encre);
-    border-bottom: 0;
-    padding-top: 0.4rem;
-    font-weight: 700;
-    font-size: 0.9rem;
-  }
-
   .echelle {
     text-align: right;
   }
@@ -315,12 +313,38 @@
   }
 
   .commentaire {
-    min-height: 60mm;
+    min-height: 28mm;
     border: 0.5pt solid var(--papier-trait);
     border-radius: 2px;
     padding: var(--e4);
     font-size: 0.85rem;
     line-height: 1.5;
+  }
+
+  /* Seul commentaire de la feuille : il peut occuper toute la place. */
+  .commentaire.seul {
+    min-height: 60mm;
+  }
+
+  .commentaire + .commentaire {
+    margin-top: var(--e3);
+  }
+
+  .commentaire.anterieur {
+    min-height: 0;
+    color: var(--papier-douce);
+  }
+
+  .periode-commentaire {
+    margin: 0 0 0.3rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--papier-douce);
+  }
+
+  .texte {
     white-space: pre-wrap;
   }
 

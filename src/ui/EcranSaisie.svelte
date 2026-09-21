@@ -33,7 +33,7 @@
   let maxima = $state<Record<Id, number>>({});
 
   /**
-   * Découpe « Français › Lire-écrire » en parents + feuille, pour n'appuyer
+   * Découpe « Français › Lire » en parents + feuille, pour n'appuyer
    * typographiquement que sur la rubrique réellement saisie.
    */
   function chemin(rubrique: Rubrique): { parents: string; feuille: string } {

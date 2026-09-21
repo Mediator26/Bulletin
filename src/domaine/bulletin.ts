@@ -3,8 +3,13 @@
  *
  * Ce module ne rend rien : il produit la structure exacte à imprimer, ligne à
  * ligne. Le composant n'a plus qu'à la parcourir. C'est ce qui permet de tester
- * le contenu d'un bulletin — les totaux, les vides, la moyenne — sans ouvrir de
+ * le contenu d'un bulletin — les scores, les vides, la moyenne — sans ouvrir de
  * navigateur, là où le classeur exigeait de lire 30 feuilles à l'œil.
+ *
+ * Un bulletin est cumulatif : celui de la période 2 rappelle la période 1,
+ * celui de la période 3 rappelle les deux premières. Points, cotations
+ * littérales et commentaires sont repris ensemble — le lecteur du bulletin voit
+ * le parcours de l'année, pas un instantané isolé.
  */
 
 import { moyenneAnnuelle, resultatsParRubrique, scoreRubriqueArbre } from './calcul.js';
@@ -30,15 +35,20 @@ export interface LigneBulletin {
   maximum: number;
   /** Score de la période, ou `null` quand rien n'est encodé — imprimé « — ». */
   score: number | null;
-  /**
-   * Scores des périodes précédentes, dans l'ordre de `Bulletin.periodesAnterieures`
-   * — donc vide sauf sur le bulletin de la dernière période, qui récapitule l'année.
-   */
+  /** Scores des périodes précédentes, dans l'ordre de `Bulletin.periodesAnterieures`. */
   scoresAnterieurs: (number | null)[];
   /** Cotation littérale, pour les rubriques de type `echelle`. */
   cotation: Echelle | null;
+  /** Cotations littérales des périodes précédentes, même ordre que `scoresAnterieurs`. */
+  cotationsAnterieures: (Echelle | null)[];
   /** Moyenne des périodes complétées ; vide tant qu'il n'y en a qu'une. */
   moyenne: number | null;
+}
+
+/** Commentaire déjà remis sur un bulletin précédent, rappelé au verso. */
+export interface CommentairePeriode {
+  periode: Periode;
+  texte: string;
 }
 
 export interface Bulletin {
@@ -48,18 +58,14 @@ export interface Bulletin {
   titulaire: string;
   anneeScolaire: string;
   /**
-   * Périodes rappelées à gauche de la période courante. Vide partout sauf sur
-   * le bulletin de la dernière période : le titulaire y veut l'année entière
-   * sous les yeux, alors qu'en cours d'année ces colonnes n'apprendraient rien.
+   * Toutes les périodes déjà remises, de la première à la précédente. Chaque
+   * bulletin reprend ainsi l'intégralité de ce qui a été coté avant lui.
    */
   periodesAnterieures: Periode[];
   lignes: LigneBulletin[];
   commentaire: string;
-  /** Total général sur 100 des rubriques principales cotées en points. */
-  total: number | null;
-  /** Totaux des `periodesAnterieures`, calculés comme `total`. */
-  totauxAnterieurs: (number | null)[];
-  totalMaximum: number;
+  /** Commentaires des `periodesAnterieures` ; les périodes sans texte sont omises. */
+  commentairesAnterieurs: CommentairePeriode[];
 }
 
 /** Indique si la rubrique est une racine à imprimer, avec ses filles en dessous. */
@@ -80,9 +86,17 @@ function cotationDe(
   );
 }
 
+function commentaireDe(fichier: FichierClasse, eleve_id: Id, periode_id: Id): string {
+  return (
+    fichier.commentaires.find((c) => c.eleve_id === eleve_id && c.periode_id === periode_id)
+      ?.texte ?? ''
+  );
+}
+
 /**
  * Score d'une rubrique pour une période donnée, en repartant des résultats bruts.
- * Isolé ici parce que la moyenne annuelle a besoin de le rejouer sur chaque période.
+ * Isolé ici parce que les périodes rappelées et la moyenne annuelle ont besoin
+ * de le rejouer sur chaque période.
  */
 function scorePourPeriode(
   fichier: FichierClasse,
@@ -100,16 +114,6 @@ function periodesTriees(fichier: FichierClasse): Periode[] {
   return [...fichier.periodes].sort((a, b) => a.numero - b.numero);
 }
 
-/**
- * Total général d'un jeu de lignes : seules les rubriques principales cotées en
- * points comptent — les sous-rubriques y sont déjà comprises, et une échelle
- * littérale ne s'additionne pas. `null` quand rien n'est coté.
- */
-function totaliser(scores: readonly (number | null)[]): number | null {
-  const cotes = scores.filter((s): s is number => s !== null);
-  return cotes.length === 0 ? null : Math.round(cotes.reduce((s, v) => s + v, 0) * 10) / 10;
-}
-
 /** Compose le bulletin d'un élève pour une période. */
 export function construireBulletin(
   fichier: FichierClasse,
@@ -120,11 +124,11 @@ export function construireBulletin(
   const periode = fichier.periodes.find((p) => p.id === periode_id);
   if (!eleve || !periode) return null;
 
-  // Sur la dernière période seulement, on rappelle les périodes précédentes.
+  // Tout ce qui précède la période imprimée est rappelé : le bulletin de
+  // février doit montrer où l'élève en était en décembre.
   const ordonnees = periodesTriees(fichier);
-  const derniere = ordonnees[ordonnees.length - 1];
-  const periodesAnterieures =
-    derniere && derniere.id === periode.id ? ordonnees.slice(0, -1) : [];
+  const rang = ordonnees.findIndex((p) => p.id === periode.id);
+  const periodesAnterieures = rang > 0 ? ordonnees.slice(0, rang) : [];
 
   const lignes: LigneBulletin[] = [];
 
@@ -143,6 +147,9 @@ export function construireBulletin(
         ? periodesAnterieures.map(() => null)
         : periodesAnterieures.map((p) => scorePourPeriode(fichier, rubrique.id, eleve.id, p.id)),
       cotation: enEchelle ? cotationDe(fichier, rubrique.id, eleve.id, periode.id) : null,
+      cotationsAnterieures: enEchelle
+        ? periodesAnterieures.map((p) => cotationDe(fichier, rubrique.id, eleve.id, p.id))
+        : periodesAnterieures.map(() => null),
       moyenne: enEchelle
         ? null
         : moyenneAnnuelle(
@@ -155,8 +162,6 @@ export function construireBulletin(
 
   for (const racine of racines(fichier.rubriques)) ajouterLigne(racine, 0);
 
-  const principales = lignes.filter((l) => l.niveau === 0 && l.type === 'points');
-
   return {
     eleve,
     periode,
@@ -165,14 +170,10 @@ export function construireBulletin(
     anneeScolaire: fichier.annee.libelle,
     periodesAnterieures,
     lignes,
-    commentaire:
-      fichier.commentaires.find((c) => c.eleve_id === eleve.id && c.periode_id === periode.id)
-        ?.texte ?? '',
-    total: totaliser(principales.map((l) => l.score)),
-    totauxAnterieurs: periodesAnterieures.map((_, i) =>
-      totaliser(principales.map((l) => l.scoresAnterieurs[i] ?? null)),
-    ),
-    totalMaximum: principales.reduce((s, l) => s + l.maximum, 0),
+    commentaire: commentaireDe(fichier, eleve.id, periode.id),
+    commentairesAnterieurs: periodesAnterieures
+      .map((p) => ({ periode: p, texte: commentaireDe(fichier, eleve.id, p.id) }))
+      .filter((c) => c.texte.trim() !== ''),
   };
 }
 
