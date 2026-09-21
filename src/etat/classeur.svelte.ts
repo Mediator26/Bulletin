@@ -77,17 +77,42 @@ class Classeur {
   }
 
   /**
-   * Enregistre par téléchargement. Le fichier atterrit dans « Téléchargements » :
-   * l'enseignant doit ensuite le déplacer sur le Drive en écrasant l'ancien.
+   * Enregistre le fichier. Quand le navigateur expose la File System Access API
+   * (hors `file://`, qui n'est pas un contexte sécurisé), une fenêtre native
+   * laisse l'enseignant choisir le dossier de destination — typiquement le
+   * Drive directement, sans passer par « Téléchargements ». Sinon, on revient
+   * au téléchargement classique.
    */
-  enregistrer(): void {
+  async enregistrer(): Promise<void> {
     if (!this.fichier) return;
 
+    const nom = this.nomFichier || 'classe.json';
     const contenu = serialiserClasse($state.snapshot(this.fichier) as FichierClasse, VERSION);
+
+    if (window.showSaveFilePicker) {
+      try {
+        const poignee = await window.showSaveFilePicker({
+          suggestedName: nom,
+          types: [{ description: 'Fichier de classe', accept: { 'application/json': ['.json'] } }],
+        });
+        const flux = await poignee.createWritable();
+        await flux.write(contenu);
+        await flux.close();
+
+        this.nomFichier = poignee.name;
+        this.modifie = false;
+        this.message = { ton: 'info', texte: `« ${poignee.name} » a été enregistré.` };
+      } catch (erreur) {
+        if (erreur instanceof DOMException && erreur.name === 'AbortError') return;
+        this.message = { ton: 'erreur', texte: "L'enregistrement a échoué. Réessayez." };
+      }
+      return;
+    }
+
     const url = URL.createObjectURL(new Blob([contenu], { type: 'application/json' }));
     const lien = document.createElement('a');
     lien.href = url;
-    lien.download = this.nomFichier || 'classe.json';
+    lien.download = nom;
     lien.click();
     URL.revokeObjectURL(url);
 
