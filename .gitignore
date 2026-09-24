@@ -1,6 +1,6 @@
 # Dépendances
+# package-lock.json est versionné : il fige les versions du build (`npm ci`).
 node_modules/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 

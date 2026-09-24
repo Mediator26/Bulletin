@@ -31,6 +31,14 @@ npm run dev                           # serveur de développement Vite
   `assetsInlineLimit` très élevé sont ce qui rend le fichier utilisable en `file://`.
   Toute dépendance qui charge une ressource à l'exécution casse l'outil.
 - **Moins de 2 Mo** pour le `.html` produit (C8).
+- **Politique de sécurité du contenu** : `vite.config.ts` injecte au build une CSP
+  qui interdit toute requête réseau, image distante ou envoi de formulaire. Un
+  code qui fonctionne en `npm run dev` (sans CSP) mais touche au réseau échouera
+  dans le fichier construit — c'est voulu, ne pas assouplir la politique.
+- **Dépendances figées** : `package-lock.json` est versionné, la CI installe par
+  `npm ci`, et `.npmrc` interdit les scripts d'installation (`ignore-scripts=true`).
+  Ajouter ou mettre à jour une dépendance est un changement délibéré, visible
+  dans le lockfile. Les actions GitHub sont épinglées par empreinte de commit.
 - La cible d'impression est le navigateur : mise en page en CSS `@page` / `@media print`,
   export PDF via « Imprimer → Enregistrer au format PDF ». Ne pas introduire de
   bibliothèque de génération de PDF.
