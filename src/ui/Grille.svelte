@@ -19,7 +19,12 @@
 <script lang="ts">
   import type { Eleve, FichierClasse, Statut, Test } from '../domaine/modele.js';
   import { deplacer, idCellule, type Cellule } from '../domaine/navigation.js';
-  import { definirResultat, resultatDe, supprimerTest } from '../domaine/mutations.js';
+  import {
+    definirResultat,
+    nombreResultats,
+    resultatDe,
+    supprimerTest,
+  } from '../domaine/mutations.js';
   import { validerPoints } from '../domaine/validation.js';
 
   interface Props {
@@ -84,6 +89,25 @@
     definirResultat(fichier, test.id, eleve.id, null, statut);
     const { [cle(ligne, colonne)]: _, ...reste } = erreurs;
     erreurs = reste;
+    onModification();
+  }
+
+  /**
+   * Le « × » d'une colonne efface les notes de toute la classe, et rien ne les
+   * rend. Un test encore vide — typiquement créé par erreur — part sans
+   * question ; dès qu'un résultat est encodé, la suppression se confirme, comme
+   * celle d'un élève, d'une rubrique ou d'une période.
+   */
+  function retirerTest(test: Test): void {
+    const nombre = nombreResultats(fichier, test.id);
+    if (nombre > 0) {
+      const perte =
+        nombre === 1
+          ? 'Le résultat déjà encodé sera perdu.'
+          : `Les ${nombre} résultats déjà encodés seront perdus.`;
+      if (!confirm(`Supprimer le test « ${test.libelle} » ? ${perte}`)) return;
+    }
+    supprimerTest(fichier, test.id);
     onModification();
   }
 
@@ -154,10 +178,7 @@
                 class="supprimer"
                 title="Supprimer ce test et ses résultats"
                 aria-label="Supprimer le test {test.libelle}"
-                onclick={() => {
-                  supprimerTest(fichier, test.id);
-                  onModification();
-                }}
+                onclick={() => retirerTest(test)}
                 data-colonne={colonne}>×</button
               >
             </th>

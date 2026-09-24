@@ -112,6 +112,15 @@ export function supprimerTest(fichier: FichierClasse, test_id: Id): void {
   fichier.resultats = fichier.resultats.filter((r) => r.test_id !== test_id);
 }
 
+/**
+ * Nombre de résultats encodés pour un test, absences et dispenses comprises :
+ * c'est ce que sa suppression ferait perdre. Une cellule vidée ne compte pas,
+ * `definirResultat` ne la conserve pas.
+ */
+export function nombreResultats(fichier: FichierClasse, test_id: Id): number {
+  return fichier.resultats.filter((r) => r.test_id === test_id).length;
+}
+
 /** Tests d'une période, dans l'ordre des colonnes de la grille. */
 export function testsDeLaPeriode(
   fichier: FichierClasse,

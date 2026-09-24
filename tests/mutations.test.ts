@@ -6,6 +6,7 @@ import {
   definirCotation,
   definirResultat,
   elevesTries,
+  nombreResultats,
   nouvelId,
   renommerEleve,
   resultatDe,
@@ -129,6 +130,24 @@ describe('tests', () => {
     supprimerTest(f, t1.id);
 
     expect(f.resultats.map((r) => r.test_id)).toEqual([t2.id]);
+  });
+
+  it('compte ce que la suppression d’un test ferait perdre, absences comprises', () => {
+    const lea = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+    const tom = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom', annee_etude: 4 });
+    const zoe = ajouterEleve(f, { nom: 'Étienne', prenom: 'Zoé', annee_etude: 4 });
+    const t1 = ajouterTest(f, { periode_id: p1(), rubrique_id: 'francais.ecrire', libelle: 'D1', maximum: 10 });
+    const t2 = ajouterTest(f, { periode_id: p1(), rubrique_id: 'francais.ecrire', libelle: 'D2', maximum: 10 });
+
+    expect(nombreResultats(f, t1.id)).toBe(0);
+
+    definirResultat(f, t1.id, lea.id, 0);
+    definirResultat(f, t1.id, tom.id, null, 'absent');
+    definirResultat(f, t1.id, zoe.id, 7);
+    definirResultat(f, t1.id, zoe.id, null); // cellule vidée : plus rien à perdre
+    definirResultat(f, t2.id, lea.id, 9);
+
+    expect(nombreResultats(f, t1.id)).toBe(2);
   });
 });
 
