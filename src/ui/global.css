@@ -449,7 +449,12 @@ code {
 @media print {
   :root {
     color-scheme: light;
-    font-size: 12px;
+    /* Le corps du tableau tombe autour de 8 pt : lisible sur papier sans
+       tasser la page. */
+    font-size: 13px;
+    /* Hauteur utile d'une feuille : 297 mm moins les deux marges de `@page`
+       ci-dessus — à tenir en phase si ces marges changent. */
+    --hauteur-utile: calc(297mm - 2 * 12mm);
     --papier: #ffffff;
     --papier-encre: #000000;
     --papier-douce: #444444;

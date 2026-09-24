@@ -409,6 +409,38 @@
       margin-top: 0;
     }
 
+    /*
+     * Chaque face occupe toute la feuille. La page prend au moins la hauteur
+     * utile d'une A4 — au moins, et non exactement : une classe qui a ajouté
+     * beaucoup de rubriques déborde sur une page de plus au lieu d'être
+     * tronquée. Au recto, le tableau s'étire dans ce qui reste sous l'en-tête
+     * et ses lignes s'espacent d'autant ; au verso, la zone de commentaire
+     * grandit et les signatures descendent en bas de page.
+     *
+     * Les 2 mm retranchés absorbent les arrondis du navigateur : dépasser d'un
+     * cheveu enverrait la légende seule sur une page et décalerait tous les
+     * versos d'une impression recto verso.
+     */
+    .page {
+      display: flex;
+      flex-direction: column;
+      min-height: calc(var(--hauteur-utile) - 2mm);
+    }
+
+    .tableau-scroll {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    table {
+      flex: 1;
+    }
+
+    .commentaire:not(.anterieur) {
+      flex: 1;
+    }
+
     .bulletin {
       break-after: page;
     }
