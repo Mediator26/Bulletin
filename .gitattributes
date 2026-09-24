@@ -1,0 +1,3 @@
+# Les PDF produits par reportlab sont en ASCII pur : sans cette ligne, git les
+# prend pour du texte et core.autocrlf casse leurs offsets internes au checkout.
+*.pdf binary
