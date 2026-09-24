@@ -34,7 +34,7 @@ export function nouvelId(prefixe: string): Id {
 
 export function ajouterEleve(
   fichier: FichierClasse,
-  eleve: { nom: string; prenom: string; annee_etude: number },
+  eleve: { nom: string; prenom: string },
 ): Eleve {
   const ordre = fichier.eleves.reduce((max, e) => Math.max(max, e.ordre), 0) + 1;
   const nouveau: Eleve = {
@@ -42,7 +42,6 @@ export function ajouterEleve(
     annee_id: fichier.annee.id,
     nom: eleve.nom.trim(),
     prenom: eleve.prenom.trim(),
-    annee_etude: eleve.annee_etude,
     ordre,
   };
   fichier.eleves.push(nouveau);

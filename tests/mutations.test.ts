@@ -37,7 +37,7 @@ describe('nouvelId', () => {
 
 describe('renommerEleve', () => {
   it('corrige l’identité sans toucher aux résultats déjà encodés', () => {
-    const eleve = ajouterEleve(f, { nom: 'Martn', prenom: 'Lea', annee_etude: 4 });
+    const eleve = ajouterEleve(f, { nom: 'Martn', prenom: 'Lea' });
     const rubrique = f.rubriques[0]!;
     const t = ajouterTest(f, {
       periode_id: p1(),
@@ -54,7 +54,7 @@ describe('renommerEleve', () => {
   });
 
   it('refuse un nom vide et un élève inconnu', () => {
-    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
     expect(renommerEleve(f, eleve.id, { nom: '   ', prenom: 'Léa' })).toBe(false);
     expect(renommerEleve(f, 'eleve-inconnu', { nom: 'X', prenom: 'Y' })).toBe(false);
     expect(f.eleves[0]!.nom).toBe('Martin');
@@ -63,27 +63,27 @@ describe('renommerEleve', () => {
 
 describe('élèves', () => {
   it('numérote les élèves dans leur ordre d’ajout', () => {
-    ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
-    const second = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom', annee_etude: 4 });
+    ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
+    const second = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom' });
     expect(second.ordre).toBe(2);
   });
 
   it('affiche la classe par ordre alphabétique, comme la feuille NOMS', () => {
-    ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
-    ajouterEleve(f, { nom: 'Abel', prenom: 'Tom', annee_etude: 4 });
-    ajouterEleve(f, { nom: 'Étienne', prenom: 'Zoé', annee_etude: 4 });
+    ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
+    ajouterEleve(f, { nom: 'Abel', prenom: 'Tom' });
+    ajouterEleve(f, { nom: 'Étienne', prenom: 'Zoé' });
     expect(elevesTries(f).map((e) => e.nom)).toEqual(['Abel', 'Étienne', 'Martin']);
   });
 
   it('départage deux homonymes par le prénom', () => {
-    ajouterEleve(f, { nom: 'Martin', prenom: 'Zoé', annee_etude: 4 });
-    ajouterEleve(f, { nom: 'Martin', prenom: 'Ana', annee_etude: 4 });
+    ajouterEleve(f, { nom: 'Martin', prenom: 'Zoé' });
+    ajouterEleve(f, { nom: 'Martin', prenom: 'Ana' });
     expect(elevesTries(f).map((e) => e.prenom)).toEqual(['Ana', 'Zoé']);
   });
 
   it('supprime avec l’élève tout ce qui le concerne, sans laisser d’orphelin', () => {
-    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
-    const autre = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom', annee_etude: 4 });
+    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
+    const autre = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom' });
     const test = ajouterTest(f, { periode_id: p1(), rubrique_id: 'francais.ecrire', libelle: 'Dictée', maximum: 10 });
     definirResultat(f, test.id, eleve.id, 8);
     definirResultat(f, test.id, autre.id, 6);
@@ -121,7 +121,7 @@ describe('tests', () => {
   });
 
   it('emporte les résultats du test supprimé, et eux seuls', () => {
-    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
     const t1 = ajouterTest(f, { periode_id: p1(), rubrique_id: 'francais.ecrire', libelle: 'D1', maximum: 10 });
     const t2 = ajouterTest(f, { periode_id: p1(), rubrique_id: 'francais.ecrire', libelle: 'D2', maximum: 10 });
     definirResultat(f, t1.id, eleve.id, 8);
@@ -133,9 +133,9 @@ describe('tests', () => {
   });
 
   it('compte ce que la suppression d’un test ferait perdre, absences comprises', () => {
-    const lea = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
-    const tom = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom', annee_etude: 4 });
-    const zoe = ajouterEleve(f, { nom: 'Étienne', prenom: 'Zoé', annee_etude: 4 });
+    const lea = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
+    const tom = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom' });
+    const zoe = ajouterEleve(f, { nom: 'Étienne', prenom: 'Zoé' });
     const t1 = ajouterTest(f, { periode_id: p1(), rubrique_id: 'francais.ecrire', libelle: 'D1', maximum: 10 });
     const t2 = ajouterTest(f, { periode_id: p1(), rubrique_id: 'francais.ecrire', libelle: 'D2', maximum: 10 });
 
@@ -153,7 +153,7 @@ describe('tests', () => {
 
 describe('definirResultat', () => {
   const contexte = () => {
-    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
     const test = ajouterTest(f, { periode_id: p1(), rubrique_id: 'francais.ecrire', libelle: 'Dictée', maximum: 10 });
     return { eleve, test };
   };
@@ -207,7 +207,7 @@ describe('definirResultat', () => {
 
 describe('cotations et commentaires', () => {
   it('remplace une cotation sans dupliquer et l’efface avec null', () => {
-    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
     definirCotation(f, 'comportement', eleve.id, p1(), 'B');
     definirCotation(f, 'comportement', eleve.id, p1(), 'TB');
     expect(f.cotations).toHaveLength(1);
@@ -218,14 +218,14 @@ describe('cotations et commentaires', () => {
   });
 
   it('cloisonne les cotations par période', () => {
-    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
     definirCotation(f, 'comportement', eleve.id, p1(), 'B');
     definirCotation(f, 'comportement', eleve.id, f.periodes[1]!.id, 'S');
     expect(f.cotations).toHaveLength(2);
   });
 
   it('n’enregistre pas un commentaire vide', () => {
-    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+    const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
     definirCommentaire(f, eleve.id, p1(), '   ');
     expect(f.commentaires).toHaveLength(0);
   });

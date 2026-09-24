@@ -28,7 +28,7 @@ beforeEach(() => {
   });
   f.rubriques = rubriquesReference(f.annee.id);
   f.periodes = periodesReference(f.annee.id);
-  eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+  eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
 });
 
 const p = (index: number) => f.periodes[index]!.id;
@@ -214,7 +214,7 @@ describe('construireBulletin — échelles et commentaires', () => {
   });
 
   it('ne mélange pas deux élèves', () => {
-    const autre = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom', annee_etude: 4 });
+    const autre = ajouterEleve(f, { nom: 'Abel', prenom: 'Tom' });
     coter('neerlandais', p(0), 8);
     expect(ligne(construireBulletin(f, autre.id, p(0)), 'neerlandais').score).toBeNull();
   });

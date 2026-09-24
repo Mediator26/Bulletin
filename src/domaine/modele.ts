@@ -40,8 +40,6 @@ export interface Eleve {
   annee_id: Id;
   nom: string;
   prenom: string;
-  /** Année d'étude (1 à 6). À ne pas confondre avec le numéro de période. */
-  annee_etude: number;
   ordre: number;
 }
 
@@ -96,7 +94,7 @@ export interface Observation {
 }
 
 /** Version du schéma de fichier — voir C4 (dérive de version). */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface FichierClasse {
   schemaVersion: number;

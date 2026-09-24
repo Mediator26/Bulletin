@@ -79,6 +79,40 @@ describe('migration du schéma', () => {
     const r = chargerClasse(JSON.stringify(schema1()));
     if (r.ok) expect(r.fichier.rubriques.find((x) => x.id === 'francais.parler')!.libelle).toBe('Parler');
   });
+
+  /** Fichier tel qu'il était enregistré quand l'élève portait son année d'étude. */
+  const schema2 = () => ({
+    ...vierge(),
+    schemaVersion: 2,
+    eleves: [
+      { id: 'eleve-1', annee_id: 'annee-1', nom: 'Martin', prenom: 'Léa', annee_etude: 4, ordre: 1 },
+      { id: 'eleve-2', annee_id: 'annee-1', nom: 'Abel', prenom: 'Tom', annee_etude: 5, ordre: 2 },
+    ],
+  });
+
+  it('retire l’année d’étude des élèves sans toucher au reste', () => {
+    const r = chargerClasse(JSON.stringify(schema2()));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.migre).toBe(true);
+      expect(r.fichier.schemaVersion).toBe(3);
+      expect(r.fichier.eleves).toEqual([
+        { id: 'eleve-1', annee_id: 'annee-1', nom: 'Martin', prenom: 'Léa', ordre: 1 },
+        { id: 'eleve-2', annee_id: 'annee-1', nom: 'Abel', prenom: 'Tom', ordre: 2 },
+      ]);
+    }
+  });
+
+  it('enchaîne les migrations depuis le schéma 1', () => {
+    const ancien = { ...schema1(), eleves: schema2().eleves };
+    const r = chargerClasse(JSON.stringify(ancien));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.fichier.schemaVersion).toBe(SCHEMA_VERSION);
+      expect(r.fichier.rubriques.find((x) => x.id === 'francais.lire-ecrire')!.libelle).toBe('Lire');
+      expect(r.fichier.eleves.every((e) => !('annee_etude' in e))).toBe(true);
+    }
+  });
 });
 
 describe('serialiserClasse', () => {

@@ -38,7 +38,6 @@
       </div>
       <div class="identite">
         <p class="nom">{bulletin.eleve.nom} {bulletin.eleve.prenom}</p>
-        <p class="annee">{bulletin.eleve.annee_etude}<sup>e</sup> année</p>
         {#if dateBulletin}<p class="date">Le {dateBulletin}</p>{/if}
       </div>
     </header>
@@ -193,10 +192,6 @@
     font-weight: 700;
     font-size: 1rem;
     letter-spacing: -0.01em;
-  }
-
-  .annee {
-    margin-top: 0.1rem;
   }
 
   .date {

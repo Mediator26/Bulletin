@@ -39,7 +39,6 @@
   // Ajout d'élève
   let nomEleve = $state('');
   let prenomEleve = $state('');
-  let anneeEtude = $state(4);
 
   const fichier = $derived(classeur.fichier);
   const eleves = $derived(fichier ? elevesTries(fichier) : []);
@@ -80,7 +79,7 @@
   function ajouterUnEleve(evenement: SubmitEvent): void {
     evenement.preventDefault();
     if (!fichier || !nomEleve.trim()) return;
-    ajouterEleve(fichier, { nom: nomEleve, prenom: prenomEleve, annee_etude: anneeEtude });
+    ajouterEleve(fichier, { nom: nomEleve, prenom: prenomEleve });
     classeur.toucher();
     nomEleve = '';
     prenomEleve = '';
@@ -327,11 +326,8 @@
           <section class="panneau">
             <h2>Ajouter un élève</h2>
             <form class="ajout" onsubmit={ajouterUnEleve}>
-              <label class="plein">Nom <input bind:value={nomEleve} required /></label>
-              <label class="plein">Prénom <input bind:value={prenomEleve} /></label>
-              <label class="courte">
-                Année <input type="number" min="1" max="6" bind:value={anneeEtude} />
-              </label>
+              <label>Nom <input bind:value={nomEleve} required /></label>
+              <label>Prénom <input bind:value={prenomEleve} /></label>
               <button type="submit">Ajouter l'élève</button>
             </form>
           </section>
@@ -690,21 +686,15 @@
 
   .ajout {
     display: grid;
-    grid-template-columns: 1fr auto;
     gap: var(--e3);
-    align-items: end;
-  }
-
-  .ajout .plein {
-    grid-column: 1 / -1;
   }
 
   .ajout input {
     width: 100%;
   }
 
-  .ajout .courte {
-    max-width: 5rem;
+  .ajout button {
+    justify-self: start;
   }
 
   @media (max-width: 900px) {

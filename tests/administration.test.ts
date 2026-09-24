@@ -26,7 +26,7 @@ beforeEach(() => {
   f = classeVierge({ libelleAnnee: '2025-2026', ecole: 'Momignies', titulaire: '', version: '0' });
   f.rubriques = rubriquesReference(f.annee.id);
   f.periodes = periodesReference(f.annee.id);
-  eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa', annee_etude: 4 });
+  eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
 });
 
 const p = (i: number) => f.periodes[i]!.id;

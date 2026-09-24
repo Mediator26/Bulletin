@@ -158,7 +158,7 @@ inline, sinon l'outil ne fonctionne pas hors ligne.
 ```
 annee_scolaire (id, libelle, ecole, titulaire)
 periode        (id, annee_id, numero, date_bulletin)          -- 3 aujourd'hui, N demain
-eleve          (id, annee_id, nom, prenom, annee_etude, ordre)
+eleve          (id, annee_id, nom, prenom, ordre)
 rubrique       (id, annee_id, parent_id, libelle, maximum, type)  -- type: points | echelle
 test           (id, periode_id, rubrique_id, libelle, maximum)
 resultat       (test_id, eleve_id, valeur NULLABLE, statut)   -- statut: presente | absent | dispense

@@ -63,7 +63,7 @@ Drive partagé/
    (Classe, Année scolaire, École, Titulaire). Les fois suivantes :
    « Ouvrir une classe… », puis choisissez votre fichier `.json`.
 2. **Ajouter les élèves.** Écran **Saisie**, panneau de gauche : Nom, Prénom,
-   Année, puis « Ajouter l'élève ». *(Oui, c'est bien dans « Saisie » et non dans
+   puis « Ajouter l'élève ». *(Oui, c'est bien dans « Saisie » et non dans
    « Réglages ».)* La liste se range toute seule par ordre alphabétique.
 3. **Choisir la période.** Dans la barre du haut : « Période 1 », « 2 » ou « 3 »,
    et remplissez la « Date du bulletin » — c'est elle qui s'imprimera.

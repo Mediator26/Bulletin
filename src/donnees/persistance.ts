@@ -34,6 +34,28 @@ const MIGRATIONS: Record<number, (brut: Record<string, unknown>) => Record<strin
       }),
     };
   },
+
+  /**
+   * 2 → 3 : l'année d'étude de l'élève disparaît.
+   *
+   * Saisie à l'ajout et imprimée sous le nom, elle a été jugée inutile par le
+   * titulaire. Le changement de schéma n'est pas de pure forme : sans lui, une
+   * ancienne version de l'application ouvrirait un fichier récent et
+   * imprimerait « undefinedᵉ année » — elle le refusera désormais clairement (C4).
+   */
+  2: (brut) => {
+    const eleves = brut['eleves'];
+    if (!Array.isArray(eleves)) return { ...brut, schemaVersion: 3 };
+    return {
+      ...brut,
+      schemaVersion: 3,
+      eleves: eleves.map((e) => {
+        if (typeof e !== 'object' || e === null) return e;
+        const { annee_etude: _, ...reste } = e as Record<string, unknown>;
+        return reste;
+      }),
+    };
+  },
 };
 
 const COLLECTIONS = [
