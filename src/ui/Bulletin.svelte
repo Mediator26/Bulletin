@@ -16,6 +16,7 @@
 <script lang="ts">
   import { afficherDate, afficherScore, type Bulletin } from '../domaine/bulletin.js';
   import { ECHELLE } from '../domaine/modele.js';
+  import logoEcole from '../assets/logo-ecole.png';
 
   const { bulletin }: { bulletin: Bulletin } = $props();
 
@@ -31,6 +32,10 @@
   <!-- Recto -->
   <section class="page">
     <header>
+      <!-- Le logo est inclus dans le fichier de l'application (C8) : il s'imprime
+           sans aucune ressource externe. Une `<img>` et non un fond CSS, que les
+           navigateurs n'impriment pas par défaut. -->
+      <img class="logo" src={logoEcole} alt="École de la Croix" />
       <div class="entete-titre">
         <p class="sur-titre">Bulletin scolaire</p>
         <h1>Période {bulletin.periode.numero}</h1>
@@ -135,14 +140,29 @@
     margin-top: var(--e5);
   }
 
+  /* Le logo, rond, est plus haut que le bloc de titre : les trois blocs se
+     centrent sur lui plutôt que de s'accrocher en haut. */
   header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--e5);
     border-bottom: 1.5pt solid var(--papier-encre);
     padding-bottom: var(--e3);
     margin-bottom: var(--e5);
+  }
+
+  /* En millimètres, comme la feuille : la taille imprimée ne dépend pas de la
+     police de l'écran. Le fond blanc de l'image se confond avec le papier. */
+  .logo {
+    flex: none;
+    width: 22mm;
+    height: auto;
+  }
+
+  .entete-titre {
+    flex: 1;
+    min-width: 0;
   }
 
   /* Le sur-titre porte le nom du document, le titre porte la période : c'est la
