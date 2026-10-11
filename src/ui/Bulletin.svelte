@@ -312,10 +312,22 @@
     font-weight: 600;
   }
 
+  /*
+   * La cote retenue est la seule information de la ligne : elle doit sortir
+   * noircie sur papier. Par défaut, les navigateurs n'impriment pas les fonds
+   * (« Graphiques d'arrière-plan » décoché) — le fond noir disparaissait et le
+   * texte blanc avec lui, si bien qu'on ne distinguait plus la cote.
+   * `print-color-adjust: exact` impose l'impression de ce fond-là, sans que
+   * l'enseignant ait à toucher un réglage. La bordure épaissie, elle, s'imprime
+   * toujours : même un navigateur qui ignorerait la propriété laisse la cote
+   * retenue encadrée, distincte des autres.
+   */
   .cote.retenue {
-    border-color: var(--papier-encre);
+    border: 1.5pt solid var(--papier-encre);
     background: var(--papier-encre);
     color: var(--papier);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .legende {
