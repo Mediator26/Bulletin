@@ -1,6 +1,8 @@
 /**
  * Référentiel de référence — le barème du §1.1 de la spécification, celui du
- * classeur remplacé.
+ * classeur remplacé, mis à jour sur les intitulés de l'école : libellés
+ * complets des domaines de mathématiques et d'éveil, Éducation physique
+ * détaillée (tenue, comportement, travail) et deux attitudes cotées en échelle.
  *
  * Il est copié dans le fichier de classe à sa création, jamais lu depuis
  * l'application à l'affichage : chaque année fige son référentiel, de sorte que
@@ -29,7 +31,12 @@ const MODELE: Modele[] = [
       { cle: 'parler', libelle: 'Parler', maximum: 10, type: 'points' },
       { cle: 'ecouter', libelle: 'Écouter', maximum: 10, type: 'points' },
       { cle: 'lire', libelle: 'Lire', maximum: 40, type: 'points' },
-      { cle: 'ecrire', libelle: 'Écrire', maximum: 20, type: 'points' },
+      {
+        cle: 'ecrire',
+        libelle: 'Écrire (grammaire, conjugaison, orthographe)',
+        maximum: 20,
+        type: 'points',
+      },
       { cle: 'expression-ecrite', libelle: 'Expression écrite', maximum: 20, type: 'points' },
     ],
   },
@@ -39,9 +46,14 @@ const MODELE: Modele[] = [
     maximum: 100,
     type: 'points',
     enfants: [
-      { cle: 'arithmetique', libelle: 'Arithmétique', maximum: 50, type: 'points' },
-      { cle: 'geometrie', libelle: 'Géométrie', maximum: 20, type: 'points' },
-      { cle: 'grandeurs', libelle: 'Grandeurs', maximum: 30, type: 'points' },
+      { cle: 'arithmetique', libelle: "De l'arithmétique à l'algèbre", maximum: 50, type: 'points' },
+      { cle: 'geometrie', libelle: "Des objets de l'espace à la géométrie", maximum: 20, type: 'points' },
+      {
+        cle: 'grandeurs',
+        libelle: 'Des grandeurs à la relation entre variables',
+        maximum: 30,
+        type: 'points',
+      },
     ],
   },
   {
@@ -50,15 +62,31 @@ const MODELE: Modele[] = [
     maximum: 100,
     type: 'points',
     enfants: [
-      { cle: 'histoire-geo', libelle: 'Histoire-géographie', maximum: 50, type: 'points' },
+      {
+        cle: 'histoire-geo',
+        libelle: 'Sciences humaines (histoire-géographie)',
+        maximum: 50,
+        type: 'points',
+      },
       { cle: 'sciences', libelle: 'Sciences', maximum: 50, type: 'points' },
     ],
   },
-  { cle: 'education-physique', libelle: 'Éducation physique', maximum: 20, type: 'points' },
+  {
+    cle: 'education-physique',
+    libelle: 'Éducation physique',
+    maximum: 20,
+    type: 'points',
+    enfants: [
+      { cle: 'tenue', libelle: 'Tenue', maximum: 5, type: 'points' },
+      { cle: 'comportement', libelle: 'Comportement', maximum: 5, type: 'points' },
+      { cle: 'travail', libelle: 'Travail', maximum: 10, type: 'points' },
+    ],
+  },
   { cle: 'neerlandais', libelle: 'Néerlandais', maximum: 20, type: 'points' },
   { cle: 'religion-epc', libelle: 'Religion / EPC', maximum: 0, type: 'echelle' },
   { cle: 'peca-fmtt', libelle: 'PECA / FMTT', maximum: 0, type: 'echelle' },
-  { cle: 'comportement', libelle: 'Comportement', maximum: 0, type: 'echelle' },
+  { cle: 'comportement', libelle: 'Attitude comportementale', maximum: 0, type: 'echelle' },
+  { cle: 'attitude-travail', libelle: 'Attitude face au travail', maximum: 0, type: 'echelle' },
 ];
 
 /** Construit les rubriques de l'année, à plat, avec leurs liens parent/enfant. */

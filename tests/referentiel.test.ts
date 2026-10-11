@@ -20,7 +20,7 @@ describe('rubriquesReference — barème du §1.1', () => {
   });
 
   it('a des sous-rubriques dont la somme fait le maximum de la branche', () => {
-    for (const branche of ['francais', 'mathematiques', 'eveil']) {
+    for (const branche of ['francais', 'mathematiques', 'eveil', 'education-physique']) {
       const somme = rubriques
         .filter((r) => r.parent_id === branche)
         .reduce((s, r) => s + r.maximum, 0);
@@ -33,9 +33,18 @@ describe('rubriquesReference — barème du §1.1', () => {
     expect(enfants.map((r) => r.maximum)).toEqual([10, 10, 40, 20, 20]);
   });
 
-  it('cote en échelle littérale Religion/EPC, PECA/FMTT et le comportement', () => {
+  it('détaille l’Éducation physique en tenue, comportement et travail', () => {
+    const enfants = rubriques.filter((r) => r.parent_id === 'education-physique');
+    expect(enfants.map((r) => [r.libelle, r.maximum])).toEqual([
+      ['Tenue', 5],
+      ['Comportement', 5],
+      ['Travail', 10],
+    ]);
+  });
+
+  it('cote en échelle littérale Religion/EPC, PECA/FMTT et les deux attitudes', () => {
     const echelles = rubriques.filter((r) => r.type === 'echelle').map((r) => r.id);
-    expect(echelles).toEqual(['religion-epc', 'peca-fmtt', 'comportement']);
+    expect(echelles).toEqual(['religion-epc', 'peca-fmtt', 'comportement', 'attitude-travail']);
   });
 
   it('rattache toutes les rubriques à l’année demandée', () => {
@@ -68,7 +77,7 @@ describe('rubriquesSaisissables', () => {
   });
 
   it('garde les rubriques de premier niveau sans enfant', () => {
-    expect(feuilles.map((r) => r.id)).toContain('education-physique');
+    expect(feuilles.map((r) => r.id)).toContain('neerlandais');
   });
 
   it('trie selon la hiérarchie, Français avant Mathématiques', () => {

@@ -160,7 +160,7 @@ describe('deplacerRubrique', () => {
       'Écouter',
       'Parler',
       'Lire',
-      'Écrire',
+      'Écrire (grammaire, conjugaison, orthographe)',
       'Expression écrite',
     ]);
   });
