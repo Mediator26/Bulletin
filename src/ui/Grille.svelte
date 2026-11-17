@@ -26,6 +26,7 @@
     supprimerTest,
   } from '../domaine/mutations.js';
   import { validerPoints } from '../domaine/validation.js';
+  import ModificationTest from './ModificationTest.svelte';
 
   interface Props {
     fichier: FichierClasse;
@@ -42,6 +43,9 @@
 
   /** Message de refus par cellule : la saisie fautive reste visible pour être corrigée. */
   let erreurs = $state<Record<string, string>>({});
+
+  /** Test dont la fenêtre de modification est ouverte. */
+  let enModification = $state<Test | null>(null);
 
   function cle(ligne: number, colonne: number): string {
     return `${ligne}:${colonne}`;
@@ -111,6 +115,23 @@
     onModification();
   }
 
+  /**
+   * Après la modification d'un test, une saisie refusée de sa colonne est
+   * revalidée : le 15 tapé dans un test « sur 10 » qui était en réalité sur 20
+   * est accepté dès que le maximum est corrigé, sans avoir à le retaper.
+   */
+  function apresModification(test: Test): void {
+    const colonne = tests.findIndex((t) => t.id === test.id);
+    for (const ligne of eleves.keys()) {
+      if (!erreurs[cle(ligne, colonne)]) continue;
+      const champ = document.getElementById(
+        idCellule({ ligne, colonne }, zone),
+      ) as HTMLInputElement | null;
+      if (champ) saisir({ currentTarget: champ } as unknown as Event, ligne, colonne);
+    }
+    onModification();
+  }
+
   function focaliser(cellule: Cellule): void {
     const champ = document.getElementById(idCellule(cellule, zone)) as HTMLInputElement | null;
     champ?.focus();
@@ -175,6 +196,12 @@
                 <span class="max">/ {test.maximum}</span>
               </span>
               <button
+                class="modifier"
+                title="Modifier le nom ou le maximum de ce test"
+                aria-label="Modifier le test {test.libelle}"
+                onclick={() => (enModification = test)}>✎</button
+              >
+              <button
                 class="supprimer"
                 title="Supprimer ce test et ses résultats"
                 aria-label="Supprimer le test {test.libelle}"
@@ -216,6 +243,15 @@
   {#if Object.values(erreurs).length > 0}
     <p class="messages-erreur" role="alert">{Object.values(erreurs)[0]}</p>
   {/if}
+{/if}
+
+{#if enModification}
+  <ModificationTest
+    {fichier}
+    test={enModification}
+    onFermer={() => (enModification = null)}
+    onModification={apresModification}
+  />
 {/if}
 
 <style>
@@ -285,6 +321,7 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .modifier,
   .supprimer {
     margin-left: var(--e1);
     border: 0;
@@ -294,6 +331,19 @@
     color: var(--encre-tenue);
     font-size: var(--t-md);
     line-height: 1;
+  }
+
+  .modifier {
+    font-size: var(--t-sm);
+  }
+
+  .modifier + .supprimer {
+    margin-left: 0;
+  }
+
+  .modifier:hover:not(:disabled) {
+    background: var(--accent-doux);
+    color: var(--accent-fort);
   }
 
   .supprimer:hover:not(:disabled) {

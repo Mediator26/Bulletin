@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ajouterEleve,
   ajouterTest,
+  convertirPoints,
   definirCommentaire,
   definirCotation,
   definirResultat,
   elevesTries,
+  impactChangementMaximum,
+  modifierTest,
   nombreResultats,
   nouvelId,
   renommerEleve,
@@ -228,5 +231,116 @@ describe('cotations et commentaires', () => {
     const eleve = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
     definirCommentaire(f, eleve.id, p1(), '   ');
     expect(f.commentaires).toHaveLength(0);
+  });
+});
+
+describe('modifierTest', () => {
+  function classeAvecDictee() {
+    const lea = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
+    const tom = ajouterEleve(f, { nom: 'Dubois', prenom: 'Tom' });
+    const zoe = ajouterEleve(f, { nom: 'Adam', prenom: 'Zoé' });
+    const t = ajouterTest(f, {
+      periode_id: p1(),
+      rubrique_id: f.rubriques[0]!.id,
+      libelle: 'Dictée',
+      maximum: 10,
+    });
+    definirResultat(f, t.id, lea.id, 8);
+    definirResultat(f, t.id, tom.id, 7.5);
+    definirResultat(f, t.id, zoe.id, null, 'absent');
+    return { t, lea, tom, zoe };
+  }
+
+  it('renomme sans toucher aux résultats ni demander de conversion', () => {
+    const { t, lea } = classeAvecDictee();
+    expect(modifierTest(f, t.id, { libelle: '  Dictée pour grand ', maximum: 10 })).toEqual({ ok: true });
+    expect(f.tests[0]!.libelle).toBe('Dictée pour grand');
+    expect(f.tests[0]!.id).toBe(t.id);
+    expect(resultatDe(f, t.id, lea.id)?.valeur).toBe(8);
+  });
+
+  it('exige un choix quand le maximum change et que des notes sont encodées', () => {
+    const { t } = classeAvecDictee();
+    const refus = modifierTest(f, t.id, { libelle: 'Dictée', maximum: 20 });
+    expect(refus.ok).toBe(false);
+    expect(f.tests[0]!.maximum).toBe(10);
+  });
+
+  it('« conserver » garde les points tapés : 8 / 10 devient 8 / 20', () => {
+    const { t, lea, zoe } = classeAvecDictee();
+    expect(modifierTest(f, t.id, { libelle: 'Dictée pour grand', maximum: 20 }, 'conserver').ok).toBe(true);
+    expect(f.tests[0]!.maximum).toBe(20);
+    expect(f.tests[0]!.libelle).toBe('Dictée pour grand');
+    expect(resultatDe(f, t.id, lea.id)?.valeur).toBe(8);
+    expect(resultatDe(f, t.id, zoe.id)?.statut).toBe('absent');
+  });
+
+  it('« proportionnel » garde la réussite : 8 / 10 devient 16 / 20', () => {
+    const { t, lea, tom, zoe } = classeAvecDictee();
+    expect(modifierTest(f, t.id, { libelle: 'Dictée', maximum: 20 }, 'proportionnel').ok).toBe(true);
+    expect(resultatDe(f, t.id, lea.id)?.valeur).toBe(16);
+    expect(resultatDe(f, t.id, tom.id)?.valeur).toBe(15);
+    // Une absence reste une absence : elle ne devient pas une note.
+    expect(resultatDe(f, t.id, zoe.id)).toMatchObject({ statut: 'absent', valeur: null });
+  });
+
+  it('refuse de garder des points supérieurs au nouveau maximum, et nomme les élèves', () => {
+    const { t, lea, tom } = classeAvecDictee();
+    const refus = modifierTest(f, t.id, { libelle: 'Dictée', maximum: 5 }, 'conserver');
+    expect(refus.ok).toBe(false);
+    if (!refus.ok) {
+      expect(refus.message).toContain('Martin Léa a 8');
+      expect(refus.message).toContain('Dubois Tom a 7,5');
+    }
+    // Rien n'a bougé : ni le test, ni les notes.
+    expect(f.tests[0]!.maximum).toBe(10);
+    expect(resultatDe(f, t.id, lea.id)?.valeur).toBe(8);
+    expect(resultatDe(f, t.id, tom.id)?.valeur).toBe(7.5);
+  });
+
+  it('un 0 encodé reste un vrai 0 dans les deux conversions', () => {
+    const { t, lea } = classeAvecDictee();
+    definirResultat(f, t.id, lea.id, 0);
+    modifierTest(f, t.id, { libelle: 'Dictée', maximum: 20 }, 'proportionnel');
+    expect(resultatDe(f, t.id, lea.id)).toMatchObject({ statut: 'presente', valeur: 0 });
+  });
+
+  it('change librement le maximum d’un test sans note encodée', () => {
+    const t = ajouterTest(f, { periode_id: p1(), rubrique_id: f.rubriques[0]!.id, libelle: 'X', maximum: 10 });
+    expect(modifierTest(f, t.id, { libelle: 'X', maximum: 20 }).ok).toBe(true);
+    expect(f.tests[0]!.maximum).toBe(20);
+  });
+
+  it('refuse un nom vide, un maximum nul et un test inconnu', () => {
+    const { t } = classeAvecDictee();
+    expect(modifierTest(f, t.id, { libelle: '  ', maximum: 10 }).ok).toBe(false);
+    expect(modifierTest(f, t.id, { libelle: 'Dictée', maximum: 0 }).ok).toBe(false);
+    expect(modifierTest(f, t.id, { libelle: 'Dictée', maximum: Number.NaN }).ok).toBe(false);
+    expect(modifierTest(f, 'test-inconnu', { libelle: 'Dictée', maximum: 10 }).ok).toBe(false);
+  });
+});
+
+describe('impactChangementMaximum', () => {
+  it('liste les notes chiffrées dans l’ordre de la grille, absences exclues', () => {
+    const lea = ajouterEleve(f, { nom: 'Martin', prenom: 'Léa' });
+    const zoe = ajouterEleve(f, { nom: 'Adam', prenom: 'Zoé' });
+    const max = ajouterEleve(f, { nom: 'Bernard', prenom: 'Max' });
+    const t = ajouterTest(f, { periode_id: p1(), rubrique_id: f.rubriques[0]!.id, libelle: 'D', maximum: 10 });
+    definirResultat(f, t.id, lea.id, 8);
+    definirResultat(f, t.id, zoe.id, 6);
+    definirResultat(f, t.id, max.id, null, 'dispense');
+
+    const impact = impactChangementMaximum(f, t.id, 7)!;
+    expect(impact.notes.map((n) => n.eleve_id)).toEqual([zoe.id, lea.id]);
+    expect(impact.notes[0]).toMatchObject({ avant: 6, conserver: 6, proportionnel: 4.2 });
+    expect(impact.depassements.map((n) => n.eleve_id)).toEqual([lea.id]);
+  });
+});
+
+describe('convertirPoints', () => {
+  it('arrondit au centième sans jamais dépasser le nouveau maximum', () => {
+    expect(convertirPoints(7, 15, 20)).toBe(9.33);
+    expect(convertirPoints(10, 10, 20)).toBe(20);
+    expect(convertirPoints(3, 3, 7)).toBe(7);
   });
 });

@@ -112,6 +112,151 @@ export function supprimerTest(fichier: FichierClasse, test_id: Id): void {
 }
 
 /**
+ * Ce que deviennent les points déjà encodés quand le maximum d'un test change.
+ *
+ * Les deux lectures sont légitimes, et seul l'enseignant sait laquelle est la
+ * bonne — l'application ne choisit jamais à sa place :
+ *  · `conserver`     — les points tapés étaient les vrais points de la copie,
+ *                      c'est le maximum qui était faux (8 / 10 devient 8 / 20) ;
+ *  · `proportionnel` — les copies étaient bien corrigées sur l'ancien maximum,
+ *                      le test doit simplement peser plus ou moins : la réussite
+ *                      est gardée par une règle de trois (8 / 10 devient 16 / 20).
+ */
+export type ConversionPoints = 'conserver' | 'proportionnel';
+
+/** Une note encodée, et ce qu'elle deviendrait selon chaque conversion. */
+export interface NoteConvertie {
+  eleve_id: Id;
+  avant: number;
+  conserver: number;
+  proportionnel: number;
+}
+
+export interface ImpactMaximum {
+  ancienMaximum: number;
+  nouveauMaximum: number;
+  /** Notes chiffrées déjà encodées, dans l'ordre de la grille. Absences et dispenses n'y sont pas : elles ne changent jamais. */
+  notes: NoteConvertie[];
+  /** Notes qui dépasseraient le nouveau maximum si on les gardait telles quelles. */
+  depassements: NoteConvertie[];
+}
+
+/**
+ * Règle de trois, arrondie au centième : assez fin pour ne pas déplacer un
+ * score de rubrique (arrondi au dixième, §2.5), assez court pour rester lisible
+ * dans une cellule de la grille. Jamais au-delà du nouveau maximum.
+ */
+export function convertirPoints(valeur: number, ancienMaximum: number, nouveauMaximum: number): number {
+  const converti = Math.round(((valeur * nouveauMaximum) / ancienMaximum) * 100) / 100;
+  return Math.min(converti, nouveauMaximum);
+}
+
+/**
+ * Ce qu'un changement de maximum ferait aux notes déjà encodées, pour chaque
+ * conversion possible. C'est de quoi montrer à l'enseignant, avec les notes de
+ * sa propre classe, la conséquence de son choix avant qu'il le fasse.
+ */
+export function impactChangementMaximum(
+  fichier: FichierClasse,
+  test_id: Id,
+  nouveauMaximum: number,
+): ImpactMaximum | null {
+  const test = fichier.tests.find((t) => t.id === test_id);
+  if (!test) return null;
+
+  const notes: NoteConvertie[] = [];
+  for (const eleve of elevesTries(fichier)) {
+    const resultat = resultatDe(fichier, test_id, eleve.id);
+    if (!resultat || resultat.statut !== 'presente' || resultat.valeur === null) continue;
+    notes.push({
+      eleve_id: eleve.id,
+      avant: resultat.valeur,
+      conserver: resultat.valeur,
+      proportionnel: convertirPoints(resultat.valeur, test.maximum, nouveauMaximum),
+    });
+  }
+
+  return {
+    ancienMaximum: test.maximum,
+    nouveauMaximum,
+    notes,
+    depassements: notes.filter((n) => n.avant > nouveauMaximum),
+  };
+}
+
+export type ModificationTest = { ok: true } | { ok: false; message: string };
+
+/**
+ * Corrige un test encodé de travers : son nom, son maximum, ou les deux.
+ *
+ * Comme `renommerEleve`, l'`id` ne change pas : les résultats restent attachés
+ * au test, là où le supprimer puis le recréer les faisait tous perdre. Quand le
+ * maximum change et que des notes sont déjà encodées, `conversion` dit ce
+ * qu'elles deviennent ; sans elle, rien n'est modifié.
+ *
+ * Garder des points qui dépasseraient le nouveau maximum est refusé : ce serait
+ * réintroduire, par la bande, le 15 sur 10 que la validation de saisie
+ * empêche (défaut n° 15). Le refus nomme les élèves concernés.
+ */
+export function modifierTest(
+  fichier: FichierClasse,
+  test_id: Id,
+  modification: { libelle: string; maximum: number },
+  conversion?: ConversionPoints,
+): ModificationTest {
+  const test = fichier.tests.find((t) => t.id === test_id);
+  if (!test) return { ok: false, message: 'Ce test n’existe plus. Rechargez la page de saisie.' };
+
+  const libelle = modification.libelle.trim();
+  if (!libelle) return { ok: false, message: 'Donnez un nom au test.' };
+
+  const maximum = modification.maximum;
+  if (!Number.isFinite(maximum) || maximum <= 0) {
+    return { ok: false, message: 'Le maximum doit être un nombre plus grand que 0.' };
+  }
+
+  if (maximum !== test.maximum) {
+    const impact = impactChangementMaximum(fichier, test_id, maximum)!;
+    if (impact.notes.length > 0) {
+      if (!conversion) {
+        return {
+          ok: false,
+          message: 'Des notes sont déjà encodées : choisissez ce qu’elles deviennent avec le nouveau maximum.',
+        };
+      }
+      if (conversion === 'conserver' && impact.depassements.length > 0) {
+        return { ok: false, message: messageDepassements(fichier, impact) };
+      }
+      if (conversion === 'proportionnel') {
+        for (const note of impact.notes) {
+          resultatDe(fichier, test_id, note.eleve_id)!.valeur = note.proportionnel;
+        }
+      }
+    }
+  }
+
+  test.libelle = libelle;
+  test.maximum = maximum;
+  return { ok: true };
+}
+
+/** « Martin Léa a 15 et Dubois Tom a 12, plus que le nouveau maximum (10). » */
+export function messageDepassements(fichier: FichierClasse, impact: ImpactMaximum): string {
+  const noms = impact.depassements.map((n) => {
+    const eleve = fichier.eleves.find((e) => e.id === n.eleve_id);
+    const nom = eleve ? `${eleve.nom} ${eleve.prenom}`.trim() : 'Un élève';
+    return `${nom} a ${String(n.avant).replace('.', ',')}`;
+  });
+  const liste =
+    noms.length === 1 ? noms[0]! : `${noms.slice(0, -1).join(', ')} et ${noms[noms.length - 1]!}`;
+  return (
+    `Impossible de garder les points tels quels : ${liste}, plus que le nouveau maximum ` +
+    `(${String(impact.nouveauMaximum).replace('.', ',')}). Corrigez ces notes dans la grille, ` +
+    'ou choisissez de convertir les points.'
+  );
+}
+
+/**
  * Nombre de résultats encodés pour un test, absences et dispenses comprises :
  * c'est ce que sa suppression ferait perdre. Une cellule vidée ne compte pas,
  * `definirResultat` ne la conserve pas.
