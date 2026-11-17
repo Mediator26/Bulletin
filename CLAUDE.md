@@ -61,6 +61,11 @@ désynchronisations du classeur d'origine.
   - `bulletin.ts` : composition d'un bulletin, ligne à ligne, telle qu'elle sera
     imprimée. Rend la structure, jamais du HTML — c'est ce qui permet de tester
     le contenu d'un bulletin sans navigateur.
+  - `statistiques.ts` : statistiques de classe (réussite par matière, échecs,
+    évolution entre périodes, tests, élèves). Relit les scores de `calcul.ts`,
+    ne réécrit aucune règle de score. Écran en évaluation : l'onglet n'apparaît
+    qu'après un geste discret (`src/etat/acces.svelte.ts` — Ctrl + Alt + S, ou
+    cinq touches rapides sur le numéro de version), mémorisé par navigateur.
 - `src/donnees/persistance.ts` — sérialisation, migrations de schéma, nommage des
   fichiers. Aucune logique de calcul ici.
 - `src/etat/classeur.svelte.ts` — le fichier ouvert, en `$state` profond, et son

@@ -15,6 +15,7 @@
 <script lang="ts">
   import { classeur, DATE_BUILD, VERSION } from '../etat/classeur.svelte.js';
   import { apparence } from '../etat/theme.svelte.js';
+  import { accesStatistiques, estRaccourciStatistiques } from '../etat/acces.svelte.js';
   import {
     ajouterEleve,
     elevesTries,
@@ -25,10 +26,12 @@
   import EcranSaisie from './EcranSaisie.svelte';
   import EcranBulletins from './EcranBulletins.svelte';
   import EcranAdministration from './EcranAdministration.svelte';
+  import EcranStatistiques from './EcranStatistiques.svelte';
   import ListeEleves from './ListeEleves.svelte';
 
   let champFichier = $state<HTMLInputElement | null>(null);
-  let vue = $state<'saisie' | 'bulletins' | 'administration'>('saisie');
+  type Vue = 'saisie' | 'bulletins' | 'statistiques' | 'administration';
+  let vue = $state<Vue>('saisie');
 
   // Formulaire de création de classe
   let nomClasse = $state('');
@@ -43,11 +46,42 @@
   const fichier = $derived(classeur.fichier);
   const eleves = $derived(fichier ? elevesTries(fichier) : []);
 
-  const VUES = [
+  // « Statistiques » n'apparaît qu'une fois déverrouillé (voir `etat/acces`) :
+  // l'écran est en évaluation et n'est pas encore proposé à tous.
+  const VUES = $derived<{ cle: Vue; libelle: string }[]>([
     { cle: 'saisie', libelle: 'Saisie' },
     { cle: 'bulletins', libelle: 'Bulletins' },
+    ...(accesStatistiques.actif ? [{ cle: 'statistiques' as const, libelle: 'Statistiques' }] : []),
     { cle: 'administration', libelle: 'Réglages' },
-  ] as const;
+  ]);
+
+  /** Bascule l'accès aux statistiques et dit ce qui vient de se passer. */
+  function signalerAccesStatistiques(): void {
+    if (accesStatistiques.actif) {
+      vue = fichier ? 'statistiques' : vue;
+      classeur.message = {
+        ton: 'info',
+        texte: fichier
+          ? 'Statistiques activées sur ce navigateur. Refaites le même geste pour les masquer.'
+          : 'Statistiques activées sur ce navigateur : ouvrez une classe pour les consulter.',
+      };
+    } else {
+      if (vue === 'statistiques') vue = 'saisie';
+      classeur.message = { ton: 'info', texte: 'Statistiques masquées sur ce navigateur.' };
+    }
+  }
+
+  // Raccourci clavier discret : Ctrl + Alt + S.
+  $effect(() => {
+    const auClavier = (e: KeyboardEvent) => {
+      if (!estRaccourciStatistiques(e)) return;
+      e.preventDefault();
+      accesStatistiques.basculer();
+      signalerAccesStatistiques();
+    };
+    window.addEventListener('keydown', auClavier);
+    return () => window.removeEventListener('keydown', auClavier);
+  });
 
   // Garde-fou C1 : l'onglet ne se ferme pas sur un travail non enregistré.
   $effect(() => {
@@ -114,7 +148,17 @@
     </svg>
     <span class="titre">
       <strong>Bulletin scolaire</strong>
-      <span class="version" title="Date de compilation : {DATE_BUILD}">
+      <!-- Cinq touches rapides sur la version déverrouillent les statistiques :
+           le seul geste possible sur un téléphone, sans clavier. Volontairement
+           invisible — l'écran est en évaluation. -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+      <span
+        class="version"
+        title="Date de compilation : {DATE_BUILD}"
+        onclick={() => {
+          if (accesStatistiques.toucherVersion()) signalerAccesStatistiques();
+        }}
+      >
         v{VERSION} · {DATE_BUILD}
       </span>
     </span>
@@ -264,7 +308,7 @@
       </div>
 
       {#if vue !== 'administration'}
-        <!-- La période courante ne pilote que la saisie et les bulletins : dans les
+        <!-- La période courante ne pilote que la saisie, les bulletins et les statistiques : dans les
              réglages, toutes les périodes sont déjà listées, un sélecteur y serait sans
              effet visible et dupliquerait le champ de date du tableau. -->
         <div class="segmente" role="group" aria-label="Période">
@@ -279,6 +323,7 @@
           {/each}
         </div>
 
+        {#if vue !== 'statistiques'}
         <label class="date">
           <span>Date du bulletin</span>
           <input
@@ -293,6 +338,7 @@
             }}
           />
         </label>
+        {/if}
       {/if}
     </nav>
 
@@ -304,6 +350,10 @@
           periodeId={classeur.periodeCourante}
           onModification={() => classeur.toucher()}
         />
+      {/if}
+    {:else if vue === 'statistiques' && accesStatistiques.actif}
+      {#if classeur.periodeCourante}
+        <EcranStatistiques {fichier} periodeId={classeur.periodeCourante} />
       {/if}
     {:else if vue === 'administration'}
       <EcranAdministration {fichier} onModification={() => classeur.toucher()} />
@@ -398,6 +448,9 @@
   /* Version et date de build restent lisibles en permanence, sans occuper la
      place d'une action. */
   .version {
+    /* Pas de zoom au double appui sur mobile : la série de touches doit passer. */
+    touch-action: manipulation;
+    user-select: none;
     color: var(--encre-tenue);
     font-size: var(--t-xs);
     font-variant-numeric: tabular-nums;
