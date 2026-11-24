@@ -63,16 +63,15 @@ désynchronisations du classeur d'origine.
     le contenu d'un bulletin sans navigateur.
   - `statistiques.ts` : statistiques de classe (réussite par matière, échecs,
     évolution entre périodes, tests, élèves). Relit les scores de `calcul.ts`,
-    ne réécrit aucune règle de score. Écran en évaluation : l'onglet n'apparaît
-    qu'après un geste discret (`src/etat/acces.svelte.ts` — Ctrl + Alt + S, ou
-    cinq touches rapides sur le numéro de version), mémorisé par navigateur.
+    ne réécrit aucune règle de score. Affiché par l'onglet « Statistiques »
+    (`EcranStatistiques`).
 - `src/donnees/persistance.ts` — sérialisation, migrations de schéma, nommage des
   fichiers. Aucune logique de calcul ici.
 - `src/etat/classeur.svelte.ts` — le fichier ouvert, en `$state` profond, et son
   cycle de vie. Les mutations du domaine écrivent en place dans cet objet : c'est
   ce qui leur permet d'être testables en Node tout en rafraîchissant l'interface.
-- `src/ui/` — composants Svelte, organisés en trois écrans (`EcranSaisie`,
-  `EcranBulletins`, `EcranAdministration`) que `App.svelte` alterne. Ils ne
+- `src/ui/` — composants Svelte, organisés en quatre écrans (`EcranSaisie`,
+  `EcranBulletins`, `EcranStatistiques`, `EcranAdministration`) que `App.svelte` alterne. Ils ne
   calculent rien : la navigation clavier vient de `domaine/navigation.ts`, la
   validation de `domaine/validation.ts`, le contenu du bulletin de
   `domaine/bulletin.ts`. Toute règle métier écrite dans un `.svelte` est au

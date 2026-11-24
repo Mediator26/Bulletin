@@ -1,6 +1,5 @@
 <!--
-  Écran « Statistiques » — en évaluation, accessible par un geste discret
-  (voir `etat/acces.svelte.ts`).
+  Écran « Statistiques » de la classe, pour la période courante.
 
   Il ne calcule rien : tout vient de `domaine/statistiques.ts`, qui relit les
   scores du moteur (§2.5). L'écran se lit de haut en bas, du plus synthétique

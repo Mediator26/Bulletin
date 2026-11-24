@@ -1,7 +1,7 @@
 <!--
   Coquille de l'application : la barre de fichier (C1, C3, C4), la barre de
-  contexte (écran courant + période), et l'un des trois écrans — saisie,
-  bulletins imprimables, réglages.
+  contexte (écran courant + période), et l'un des quatre écrans — saisie,
+  bulletins imprimables, statistiques, réglages.
 
   Deux barres, deux rôles, et jamais l'inverse :
     · la barre haute parle du *fichier* — quelle classe est ouverte, est-elle
@@ -15,7 +15,6 @@
 <script lang="ts">
   import { classeur, DATE_BUILD, VERSION } from '../etat/classeur.svelte.js';
   import { apparence } from '../etat/theme.svelte.js';
-  import { accesStatistiques, estRaccourciStatistiques } from '../etat/acces.svelte.js';
   import {
     ajouterEleve,
     elevesTries,
@@ -46,42 +45,12 @@
   const fichier = $derived(classeur.fichier);
   const eleves = $derived(fichier ? elevesTries(fichier) : []);
 
-  // « Statistiques » n'apparaît qu'une fois déverrouillé (voir `etat/acces`) :
-  // l'écran est en évaluation et n'est pas encore proposé à tous.
-  const VUES = $derived<{ cle: Vue; libelle: string }[]>([
+  const VUES: { cle: Vue; libelle: string }[] = [
     { cle: 'saisie', libelle: 'Saisie' },
     { cle: 'bulletins', libelle: 'Bulletins' },
-    ...(accesStatistiques.actif ? [{ cle: 'statistiques' as const, libelle: 'Statistiques' }] : []),
+    { cle: 'statistiques', libelle: 'Statistiques' },
     { cle: 'administration', libelle: 'Réglages' },
-  ]);
-
-  /** Bascule l'accès aux statistiques et dit ce qui vient de se passer. */
-  function signalerAccesStatistiques(): void {
-    if (accesStatistiques.actif) {
-      vue = fichier ? 'statistiques' : vue;
-      classeur.message = {
-        ton: 'info',
-        texte: fichier
-          ? 'Statistiques activées sur ce navigateur. Refaites le même geste pour les masquer.'
-          : 'Statistiques activées sur ce navigateur : ouvrez une classe pour les consulter.',
-      };
-    } else {
-      if (vue === 'statistiques') vue = 'saisie';
-      classeur.message = { ton: 'info', texte: 'Statistiques masquées sur ce navigateur.' };
-    }
-  }
-
-  // Raccourci clavier discret : Ctrl + Alt + S.
-  $effect(() => {
-    const auClavier = (e: KeyboardEvent) => {
-      if (!estRaccourciStatistiques(e)) return;
-      e.preventDefault();
-      accesStatistiques.basculer();
-      signalerAccesStatistiques();
-    };
-    window.addEventListener('keydown', auClavier);
-    return () => window.removeEventListener('keydown', auClavier);
-  });
+  ];
 
   // Garde-fou C1 : l'onglet ne se ferme pas sur un travail non enregistré.
   $effect(() => {
@@ -148,17 +117,7 @@
     </svg>
     <span class="titre">
       <strong>Bulletin scolaire</strong>
-      <!-- Cinq touches rapides sur la version déverrouillent les statistiques :
-           le seul geste possible sur un téléphone, sans clavier. Volontairement
-           invisible — l'écran est en évaluation. -->
-      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-      <span
-        class="version"
-        title="Date de compilation : {DATE_BUILD}"
-        onclick={() => {
-          if (accesStatistiques.toucherVersion()) signalerAccesStatistiques();
-        }}
-      >
+      <span class="version" title="Date de compilation : {DATE_BUILD}">
         v{VERSION} · {DATE_BUILD}
       </span>
     </span>
@@ -351,7 +310,7 @@
           onModification={() => classeur.toucher()}
         />
       {/if}
-    {:else if vue === 'statistiques' && accesStatistiques.actif}
+    {:else if vue === 'statistiques'}
       {#if classeur.periodeCourante}
         <EcranStatistiques {fichier} periodeId={classeur.periodeCourante} />
       {/if}
