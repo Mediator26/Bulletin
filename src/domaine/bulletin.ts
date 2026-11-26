@@ -114,6 +114,25 @@ function periodesTriees(fichier: FichierClasse): Periode[] {
   return [...fichier.periodes].sort((a, b) => a.numero - b.numero);
 }
 
+/**
+ * Commentaires imprimés au verso : celui de la période et, rappelés au-dessus,
+ * ceux des périodes précédentes qui en ont un. Isolé pour que la vérification
+ * avant impression mesure la place du verso sans recomposer tout le bulletin.
+ */
+export function commentairesDuVerso(
+  fichier: FichierClasse,
+  eleve_id: Id,
+  periode: Periode,
+): Pick<Bulletin, 'commentaire' | 'commentairesAnterieurs'> {
+  return {
+    commentaire: commentaireDe(fichier, eleve_id, periode.id),
+    commentairesAnterieurs: periodesTriees(fichier)
+      .filter((p) => p.numero < periode.numero)
+      .map((p) => ({ periode: p, texte: commentaireDe(fichier, eleve_id, p.id) }))
+      .filter((c) => c.texte.trim() !== ''),
+  };
+}
+
 /** Compose le bulletin d'un élève pour une période. */
 export function construireBulletin(
   fichier: FichierClasse,
@@ -170,10 +189,7 @@ export function construireBulletin(
     anneeScolaire: fichier.annee.libelle,
     periodesAnterieures,
     lignes,
-    commentaire: commentaireDe(fichier, eleve.id, periode.id),
-    commentairesAnterieurs: periodesAnterieures
-      .map((p) => ({ periode: p, texte: commentaireDe(fichier, eleve.id, p.id) }))
-      .filter((c) => c.texte.trim() !== ''),
+    ...commentairesDuVerso(fichier, eleve.id, periode),
   };
 }
 

@@ -90,7 +90,9 @@ class Classeur {
   }
 
   #serialiser(): string {
-    return this.fichier ? JSON.stringify($state.snapshot(this.fichier)) : '';
+    // Directement sur l'état réactif : passer par `$state.snapshot` clonerait
+    // tout le fichier avant de le sérialiser, pour rien.
+    return this.fichier ? JSON.stringify(this.fichier) : '';
   }
 
   /** Point d'entrée commun à l'ouverture, la création et la restauration d'une classe. */

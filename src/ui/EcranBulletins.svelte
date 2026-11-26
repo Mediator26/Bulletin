@@ -14,8 +14,16 @@
 -->
 <script lang="ts">
   import { construireBulletin, titrePdf } from '../domaine/bulletin.js';
+  import {
+    encombrement,
+    LIGNES_VERSO,
+    lignesCommentaire,
+    lignesConseillees,
+    lignesVerso,
+  } from '../domaine/commentaire.js';
   import { definirCommentaire, definirCotation } from '../domaine/mutations.js';
   import { ECHELLE, type Echelle, type Eleve, type FichierClasse, type Id } from '../domaine/modele.js';
+  import { verifierAvantImpression } from '../domaine/verification.js';
   import BulletinImprimable from './Bulletin.svelte';
   import ListeEleves from './ListeEleves.svelte';
   import type { Action } from '../etat/historique.js';
@@ -34,9 +42,17 @@
 
   const eleveActif = $derived(eleves.find((e) => e.id === (eleveChoisi ?? eleves[0]?.id)) ?? null);
   const aImprimer = $derived(touteLaClasse ? eleves : eleveActif ? [eleveActif] : []);
+  /**
+   * Copie simple des données, pour les calculs de cet écran. Les fonctions du
+   * domaine lues à travers l'état réactif de Svelte passent par un proxy à
+   * chaque accès, soit ≈ 60 fois plus lentement : avec la vérification de toute
+   * la classe, une frappe dans le commentaire prenait plusieurs secondes.
+   */
+  const donnees = $derived($state.snapshot(fichier) as FichierClasse);
+
   const bulletins = $derived(
     aImprimer
-      .map((e) => construireBulletin(fichier, e.id, periodeId))
+      .map((e) => construireBulletin(donnees, e.id, periodeId))
       .filter((b) => b !== null),
   );
 
@@ -48,6 +64,32 @@
           ?.texte ?? '')
       : '',
   );
+
+  /** Ce qui s'imprimerait vide ou de travers, pour toute la classe. */
+  const verification = $derived(verifierAvantImpression(donnees, periodeId, eleves));
+  const numeroPeriode = $derived(fichier.periodes.find((p) => p.id === periodeId)?.numero ?? 0);
+
+  /** Place du commentaire au verso : le bulletin cumulatif le rappellera aux périodes suivantes. */
+  const place = $derived.by(() => {
+    if (!eleveActif) return null;
+    const bulletin = construireBulletin(donnees, eleveActif.id, periodeId);
+    if (!bulletin) return null;
+    const derniere = Math.max(...fichier.periodes.map((p) => p.numero));
+    const estDerniere = bulletin.periode.numero === derniere;
+    const lignes = lignesCommentaire(commentaire);
+    const conseillees = lignesConseillees(fichier.periodes.length);
+    const occupees = lignesVerso(bulletin);
+    return {
+      lignes,
+      conseillees,
+      verdict: encombrement(commentaire, bulletin, fichier.periodes.length),
+      derniere,
+      estDerniere,
+      // Au dernier bulletin, plus de part à réserver : seule compte la place restante.
+      reste: Math.max(0, Math.floor(LIGNES_VERSO - occupees)),
+      remplissage: estDerniere ? occupees / LIGNES_VERSO : lignes / conseillees,
+    };
+  });
 
   function cotationDe(rubrique_id: Id): Echelle | '' {
     if (!eleveActif) return '';
@@ -67,6 +109,24 @@
    * fichier unique n'aurait pas de sens — on reste sur celui de la classe.
    */
   function imprimer(): void {
+    // Dernier regard avant d'imprimer, limité aux bulletins qui vont sortir.
+    const ids = new Set(aImprimer.map((e) => e.id));
+    const incomplets = verification.eleves.filter((v) => ids.has(v.eleve.id));
+    if (incomplets.length > 0) {
+      const debordent = incomplets.filter((v) => v.constats.some((c) => c.gravite === 'erreur')).length;
+      const qui =
+        aImprimer.length === 1
+          ? 'Ce bulletin est à vérifier'
+          : `${incomplets.length} bulletin${incomplets.length > 1 ? 's sont' : ' est'} à vérifier`;
+      const detail =
+        debordent === 0
+          ? ''
+          : aImprimer.length === 1
+            ? ' : son verso déborde sur une page de plus'
+            : ` (verso qui déborde sur une page de plus : ${debordent})`;
+      if (!confirm(`${qui}${detail}. Le détail figure sous « Avant d'imprimer ». Imprimer quand même ?`)) return;
+    }
+
     const titreInitial = document.title;
     const bulletinUnique = !touteLaClasse && bulletins[0];
     if (bulletinUnique) document.title = titrePdf(bulletinUnique.eleve, bulletinUnique.periode);
@@ -106,9 +166,49 @@
       </button>
 
       <p class="rappel">
-        <strong>Avant d'imprimer :</strong> dans la boîte d'impression, décochez
-        « En-têtes et pieds de page », sinon l'adresse du fichier s'imprime sur le bulletin.
+        <strong>Dans la boîte d'impression,</strong> décochez « En-têtes et pieds de page »,
+        sinon l'adresse du fichier s'imprime sur le bulletin.
       </p>
+    </section>
+
+    <!-- Vérification : tout ce qui s'imprimerait vide ou de travers, élève par
+         élève. Elle informe et ne bloque pas : un élève arrivé en cours d'année
+         a légitimement des cases vides. -->
+    <section class="panneau verification">
+      <h3>Avant d'imprimer</h3>
+      {#if verification.classe.length === 0 && verification.eleves.length === 0}
+        <p class="complet">Tout est complet pour la période {numeroPeriode}.</p>
+      {:else}
+        {#each verification.classe as constat, i (i)}
+          <p class="constat {constat.gravite}">{constat.texte}</p>
+        {/each}
+        {#if verification.eleves.length > 0}
+          <p class="resume">
+            {verification.eleves.length} élève{verification.eleves.length > 1 ? 's' : ''} sur {eleves.length}
+            à vérifier
+          </p>
+          <ul class="a-verifier">
+            {#each verification.eleves as { eleve, constats } (eleve.id)}
+              <li>
+                <button
+                  class="discret nom"
+                  class:actif={eleve.id === eleveActif?.id}
+                  class:erreur={constats.some((c) => c.gravite === 'erreur')}
+                  onclick={() => (eleveChoisi = eleve.id)}
+                  title="Afficher le bulletin de {eleve.nom} {eleve.prenom}"
+                >
+                  {eleve.nom} {eleve.prenom}
+                </button>
+                <ul>
+                  {#each constats as constat, i (i)}
+                    <li class="constat {constat.gravite}">{constat.texte}</li>
+                  {/each}
+                </ul>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      {/if}
     </section>
 
     {#if eleveActif}
@@ -134,6 +234,30 @@
             }}
           ></textarea>
         </label>
+        {#if place}
+          <!-- Le verso rappelle les commentaires des périodes précédentes : un
+               texte trop long ne déborde parfois qu'au bulletin suivant. -->
+          <div class="place {place.verdict}" aria-live="polite">
+            <span class="jauge" aria-hidden="true">
+              <span style:width="{Math.min(100, place.remplissage * 100)}%"></span>
+            </span>
+            {#if place.verdict === 'deborde'}
+              <p>
+                <strong>Trop long :</strong> le verso de ce bulletin débordera sur une page de plus.
+                Raccourcissez ce commentaire{fichier.periodes.length > 1 ? ' ou un précédent' : ''}.
+              </p>
+            {:else if place.verdict === 'long' && !place.estDerniere}
+              <p>
+                ≈ {place.lignes} lignes, plus que les {place.conseillees} conseillées : le bulletin de la
+                période {place.derniere}, qui reprend tous les commentaires, risque de déborder.
+              </p>
+            {:else if place.estDerniere}
+              <p>≈ {place.lignes} ligne{place.lignes > 1 ? 's' : ''} · encore ≈ {place.reste} lignes de place au verso</p>
+            {:else}
+              <p>≈ {place.lignes} ligne{place.lignes > 1 ? 's' : ''} sur {place.conseillees} conseillées</p>
+            {/if}
+          </div>
+        {/if}
 
         {#each echelles as rubrique (rubrique.id)}
           <label class="plein">
@@ -208,6 +332,117 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--encre-douce);
+  }
+
+  /* --- Vérification avant impression --- */
+  .verification p {
+    margin: 0;
+    font-size: var(--t-xs);
+    line-height: 1.45;
+  }
+
+  .complet {
+    color: var(--ok);
+    font-weight: 600;
+  }
+
+  .resume {
+    color: var(--encre-douce);
+    font-weight: 600;
+  }
+
+  .constat.attention {
+    color: var(--attention);
+  }
+
+  .constat.erreur {
+    color: var(--alerte);
+    font-weight: 600;
+  }
+
+  .a-verifier {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e2);
+    max-height: 16rem;
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    list-style: none;
+  }
+
+  .a-verifier > li {
+    padding: var(--e2) var(--e3);
+    border: 1px solid var(--trait);
+    border-radius: var(--r-md);
+    background: var(--surface);
+  }
+
+  .a-verifier .nom {
+    padding: 0;
+    font-size: var(--t-md);
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .a-verifier .nom.actif {
+    color: var(--accent-fort);
+  }
+
+  .a-verifier .nom.erreur {
+    color: var(--alerte);
+  }
+
+  .a-verifier ul {
+    margin: var(--e1) 0 0;
+    padding-left: 1rem;
+    font-size: var(--t-xs);
+    line-height: 1.45;
+  }
+
+  /* --- Place du commentaire --- */
+  .place {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e1);
+    margin-top: calc(-1 * var(--e2));
+    color: var(--encre-douce);
+    font-size: var(--t-xs);
+  }
+
+  .place p {
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  .jauge {
+    display: block;
+    height: 3px;
+    border-radius: var(--r-max);
+    background: var(--surface-appuyee);
+    overflow: hidden;
+  }
+
+  .jauge span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+  }
+
+  .place.long {
+    color: var(--attention);
+  }
+
+  .place.long .jauge span {
+    background: var(--attention);
+  }
+
+  .place.deborde {
+    color: var(--alerte);
+  }
+
+  .place.deborde .jauge span {
+    background: var(--alerte);
   }
 
   /* --- Interrupteur --- */
