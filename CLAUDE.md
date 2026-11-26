@@ -65,14 +65,33 @@ désynchronisations du classeur d'origine.
     évolution entre périodes, tests, élèves). Relit les scores de `calcul.ts`,
     ne réécrit aucune règle de score. Affiché par l'onglet « Statistiques »
     (`EcranStatistiques`).
+  - `commentaire.ts` : place des commentaires au verso, estimée en lignes
+    imprimées. Ses constantes sont calibrées sur de vraies impressions PDF
+    (voir l'en-tête) : à recalibrer si la mise en page du verso change.
+  - `verification.ts` : ce qui s'imprimerait vide ou de travers pour une
+    période (notes, cotes, commentaire, date, verso qui déborde). Informe,
+    ne bloque jamais.
 - `src/donnees/persistance.ts` — sérialisation, migrations de schéma, nommage des
   fichiers. Aucune logique de calcul ici.
+- `src/donnees/recuperation.ts` — copies de récupération dans `localStorage`
+  (C2), une par séance de travail. Filet seulement, jamais source de vérité.
 - `src/etat/classeur.svelte.ts` — le fichier ouvert, en `$state` profond, et son
   cycle de vie. Les mutations du domaine écrivent en place dans cet objet : c'est
   ce qui leur permet d'être testables en Node tout en rafraîchissant l'interface.
+  **Toute modification se signale par `classeur.toucher(action)`**, après la
+  mutation : c'est là que se branchent l'historique d'annulation
+  (`etat/historique.ts`, des états complets sérialisés) et la copie de
+  récupération. Une mutation qui ne passe pas par `toucher` ne s'annule pas et
+  n'est pas sauvée. L'`action` porte le libellé affiché à l'annulation et un
+  `groupe` qui fusionne la frappe d'un même champ en une seule étape.
+- `src/nouveautes.ts` — nouveautés de chaque version, pour les titulaires.
+  Source de la fenêtre « Nouveautés » et du `CHANGELOG.txt` produit au build.
+  À chaque version : incrémenter `package.json` et ajouter une entrée en tête
+  (un test vérifie la concordance), en quelques points, sans jargon.
 - `src/ui/` — composants Svelte, organisés en quatre écrans (`EcranSaisie`,
   `EcranBulletins`, `EcranStatistiques`, `EcranAdministration`) que `App.svelte` alterne. Ils ne
-  calculent rien : la navigation clavier vient de `domaine/navigation.ts`, la
+  calculent rien, et passent au domaine une copie `$state.snapshot` plutôt que
+  l'état réactif quand le calcul est lourd (≈ 60 fois plus rapide) : la navigation clavier vient de `domaine/navigation.ts`, la
   validation de `domaine/validation.ts`, le contenu du bulletin de
   `domaine/bulletin.ts`. Toute règle métier écrite dans un `.svelte` est au
   mauvais endroit.

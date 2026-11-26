@@ -13,6 +13,7 @@
   change d'écran et l'autre change de données.
 -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { classeur, DATE_BUILD, VERSION } from '../etat/classeur.svelte.js';
   import { apparence } from '../etat/theme.svelte.js';
   import type { Action } from '../etat/historique.js';
@@ -29,6 +30,7 @@
   import EcranAdministration from './EcranAdministration.svelte';
   import EcranStatistiques from './EcranStatistiques.svelte';
   import ListeEleves from './ListeEleves.svelte';
+  import Nouveautes from './Nouveautes.svelte';
 
   let champFichier = $state<HTMLInputElement | null>(null);
   type Vue = 'saisie' | 'bulletins' | 'statistiques' | 'administration';
@@ -55,6 +57,28 @@
   ];
 
   const modifier = (action?: Action) => classeur.toucher(action);
+
+  let nouveautesOuvertes = $state(false);
+
+  /**
+   * Après une mise à jour (C11), un bandeau propose une fois les nouveautés.
+   * La dernière version vue est un confort mémorisé par navigateur, comme le
+   * thème : sa perte ne fait que reproposer le bandeau.
+   */
+  const CLE_VERSION_VUE = 'bulletin.version-vue';
+  onMount(() => {
+    try {
+      if (localStorage.getItem(CLE_VERSION_VUE) === VERSION) return;
+      localStorage.setItem(CLE_VERSION_VUE, VERSION);
+    } catch {
+      return; // sans stockage, le bandeau reviendrait à chaque ouverture
+    }
+    classeur.message ??= {
+      ton: 'info',
+      texte: `Nouvelle version ${VERSION} de l'application.`,
+      action: { libelle: 'Voir les nouveautés', executer: () => (nouveautesOuvertes = true) },
+    };
+  });
 
   // Garde-fou C1 : l'onglet ne se ferme pas sur un travail non enregistré.
   // Et si l'enseignant passe outre, ou si le navigateur s'arrête, la copie de
@@ -174,9 +198,13 @@
     </svg>
     <span class="titre">
       <strong>Bulletin scolaire</strong>
-      <span class="version" title="Date de compilation : {DATE_BUILD}">
+      <button
+        class="version"
+        title="Voir les nouveautés de cette version (compilée le {DATE_BUILD})"
+        onclick={() => (nouveautesOuvertes = true)}
+      >
         v{VERSION} · {DATE_BUILD}
-      </span>
+      </button>
     </span>
   </div>
 
@@ -306,6 +334,10 @@
       ×
     </button>
   </div>
+{/if}
+
+{#if nouveautesOuvertes}
+  <Nouveautes versionInstallee={VERSION} onFermer={() => (nouveautesOuvertes = false)} />
 {/if}
 
 <main>
@@ -526,10 +558,15 @@
 
   /* Version et date de build restent lisibles en permanence, sans occuper la
      place d'une action. */
+  /* Bouton qui ne s'annonce pas comme tel : il ouvre les nouveautés, mais sa
+     première fonction reste d'afficher la version (C4). */
   .version {
-    /* Pas de zoom au double appui sur mobile : la série de touches doit passer. */
-    touch-action: manipulation;
-    user-select: none;
+    justify-content: flex-start;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    font-weight: 400;
     color: var(--encre-tenue);
     font-size: var(--t-xs);
     font-variant-numeric: tabular-nums;

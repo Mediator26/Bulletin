@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { texteChangelog } from './src/nouveautes';
 
 /**
  * Politique de sécurité du contenu du fichier construit (§2.3, C10).
@@ -40,11 +41,28 @@ function politiqueDeSecurite(): Plugin {
   };
 }
 
+/**
+ * `CHANGELOG.txt` à poser à côté de l'application dans le dossier
+ * « Application » du Drive (C11). Tiré de `src/nouveautes.ts`, la même source
+ * que la fenêtre « Nouveautés » : les deux ne peuvent pas diverger.
+ */
+function changelog(): Plugin {
+  return {
+    name: 'changelog',
+    apply: 'build',
+    // Après `viteSingleFile`, qui retire du bundle tout ce qui n'est pas la page.
+    enforce: 'post',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'CHANGELOG.txt', source: texteChangelog() });
+    },
+  };
+}
+
 // Contrainte absolue (§2.3) : aucun CDN, aucune ressource externe.
 // Tout est inline, sinon l'outil ne fonctionne pas hors ligne en file://.
 export default defineConfig({
   base: './',
-  plugins: [svelte(), viteSingleFile(), politiqueDeSecurite()],
+  plugins: [svelte(), viteSingleFile(), politiqueDeSecurite(), changelog()],
   define: {
     __VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
