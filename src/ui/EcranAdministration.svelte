@@ -26,10 +26,11 @@
     supprimerRubrique,
     verifierReferentiel,
   } from '../domaine/mutations.js';
+  import type { Action } from '../etat/historique.js';
 
   interface Props {
     fichier: FichierClasse;
-    onModification: () => void;
+    onModification: (action?: Action) => void;
   }
 
   const { fichier, onModification }: Props = $props();
@@ -64,7 +65,7 @@
     const detail = nombre > 0 ? ` ${nombre} test(s) et leurs résultats seront perdus.` : '';
     if (!confirm(`Supprimer « ${rubrique.libelle} » et ses sous-rubriques ?${detail}`)) return;
     supprimerRubrique(fichier, rubrique.id);
-    onModification();
+    onModification({ libelle: `la suppression de la rubrique « ${rubrique.libelle} »` });
   }
 
   function retirerPeriode(periode_id: Id, numero: number): void {
@@ -72,7 +73,7 @@
     const detail = nombre > 0 ? ` ${nombre} test(s) et leurs résultats seront perdus.` : '';
     if (!confirm(`Supprimer la période ${numero} ?${detail}`)) return;
     supprimerPeriode(fichier, periode_id);
-    onModification();
+    onModification({ libelle: `la suppression de la période ${numero}` });
   }
 
   function creerRubrique(evenement: SubmitEvent): void {
@@ -84,8 +85,8 @@
       maximum: nouveauType === 'echelle' ? 0 : nouveauMaximum,
       type: nouveauType,
     });
+    onModification({ libelle: `l'ajout de la rubrique « ${nouveauLibelle.trim()} »` });
     nouveauLibelle = '';
-    onModification();
   }
 </script>
 
@@ -102,7 +103,7 @@
           value={fichier.annee.ecole}
           oninput={(e) => {
             fichier.annee.ecole = (e.currentTarget as HTMLInputElement).value;
-            onModification();
+            onModification({ libelle: "le nom de l'école", groupe: 'annee:ecole' });
           }}
         />
       </label>
@@ -112,7 +113,7 @@
           value={fichier.annee.titulaire}
           oninput={(e) => {
             fichier.annee.titulaire = (e.currentTarget as HTMLInputElement).value;
-            onModification();
+            onModification({ libelle: 'le nom du titulaire', groupe: 'annee:titulaire' });
           }}
         />
       </label>
@@ -122,7 +123,7 @@
           value={fichier.annee.libelle}
           oninput={(e) => {
             fichier.annee.libelle = (e.currentTarget as HTMLInputElement).value;
-            onModification();
+            onModification({ libelle: "l'année scolaire", groupe: 'annee:libelle' });
           }}
         />
       </label>
@@ -157,7 +158,7 @@
                   value={periode.date_bulletin}
                   onchange={(e) => {
                     periode.date_bulletin = (e.currentTarget as HTMLInputElement).value;
-                    onModification();
+                    onModification({ libelle: `la date du bulletin ${periode.numero}` });
                   }}
                 />
               </td>
@@ -181,7 +182,7 @@
     <button
       onclick={() => {
         ajouterPeriode(fichier);
-        onModification();
+        onModification({ libelle: "l'ajout d'une période" });
       }}
     >
       Ajouter une période
@@ -230,7 +231,7 @@
                   modifierRubrique(fichier, rubrique.id, {
                     libelle: (e.currentTarget as HTMLInputElement).value,
                   });
-                  onModification();
+                  onModification({ libelle: 'le libellé de la rubrique', groupe: `rubrique:libelle:${rubrique.id}` });
                 }}
               />
             </td>
@@ -247,7 +248,10 @@
                     modifierRubrique(fichier, rubrique.id, {
                       maximum: Number((e.currentTarget as HTMLInputElement).value),
                     });
-                    onModification();
+                    onModification({
+                      libelle: `le maximum de « ${rubrique.libelle} »`,
+                      groupe: `rubrique:maximum:${rubrique.id}`,
+                    });
                   }}
                 />
               {:else}
@@ -268,7 +272,7 @@
                     type,
                     ...(type === 'echelle' ? { maximum: 0 } : {}),
                   });
-                  onModification();
+                  onModification({ libelle: `le type de cotation de « ${rubrique.libelle} »` });
                 }}
               >
                 <option value="points">Points</option>
@@ -281,14 +285,14 @@
                 aria-label="Remonter {rubrique.libelle}"
                 onclick={() => {
                   deplacerRubrique(fichier, rubrique.id, 'haut');
-                  onModification();
+                  onModification({ libelle: `le déplacement de « ${rubrique.libelle} »` });
                 }}>↑</button
               >
               <button
                 aria-label="Descendre {rubrique.libelle}"
                 onclick={() => {
                   deplacerRubrique(fichier, rubrique.id, 'bas');
-                  onModification();
+                  onModification({ libelle: `le déplacement de « ${rubrique.libelle} »` });
                 }}>↓</button
               >
             </td>

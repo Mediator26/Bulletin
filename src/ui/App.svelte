@@ -15,6 +15,8 @@
 <script lang="ts">
   import { classeur, DATE_BUILD, VERSION } from '../etat/classeur.svelte.js';
   import { apparence } from '../etat/theme.svelte.js';
+  import type { Action } from '../etat/historique.js';
+  import { decrireMoment, type Sauvetage } from '../donnees/recuperation.js';
   import {
     ajouterEleve,
     elevesTries,
@@ -52,14 +54,67 @@
     { cle: 'administration', libelle: 'Réglages' },
   ];
 
+  const modifier = (action?: Action) => classeur.toucher(action);
+
   // Garde-fou C1 : l'onglet ne se ferme pas sur un travail non enregistré.
+  // Et si l'enseignant passe outre, ou si le navigateur s'arrête, la copie de
+  // récupération (C2) est écrite à l'instant plutôt qu'à la fin de son délai.
   $effect(() => {
     const garder = (e: BeforeUnloadEvent) => {
+      classeur.ecrireSauvetage();
       if (classeur.modifie) e.preventDefault();
     };
+    const enArrierePlan = () => {
+      if (document.visibilityState === 'hidden') classeur.ecrireSauvetage();
+    };
+    const aLaFermeture = () => classeur.ecrireSauvetage();
     window.addEventListener('beforeunload', garder);
-    return () => window.removeEventListener('beforeunload', garder);
+    window.addEventListener('pagehide', aLaFermeture);
+    document.addEventListener('visibilitychange', enArrierePlan);
+    return () => {
+      window.removeEventListener('beforeunload', garder);
+      window.removeEventListener('pagehide', aLaFermeture);
+      document.removeEventListener('visibilitychange', enArrierePlan);
+    };
   });
+
+  /**
+   * Ctrl+Z / Ctrl+Y (Cmd sur Mac). Dans un champ de texte libre — commentaire,
+   * libellé, nom —, le navigateur garde son propre « annuler », qui défait la
+   * frappe en cours et que chacun connaît. L'annulation de l'application
+   * s'applique partout ailleurs, cellules de la grille comprises : y défaire
+   * une note, c'est défaire la saisie de la cellule.
+   */
+  function raccourciAnnulation(evenement: KeyboardEvent): void {
+    if (!classeur.ouvert || !(evenement.ctrlKey || evenement.metaKey) || evenement.altKey) return;
+    const touche = evenement.key.toLowerCase();
+    const annuler = touche === 'z' && !evenement.shiftKey;
+    const retablir = touche === 'y' || (touche === 'z' && evenement.shiftKey);
+    if (!annuler && !retablir) return;
+
+    const cible = evenement.target as HTMLElement | null;
+    const texteLibre =
+      cible instanceof HTMLTextAreaElement ||
+      (cible instanceof HTMLInputElement && !cible.hasAttribute('data-cellule'));
+    // Une fenêtre ouverte (modification d'un test) travaille sur un test qui
+    // disparaîtrait sous elle.
+    if (texteLibre || document.querySelector('dialog[open]')) return;
+
+    evenement.preventDefault();
+    if (annuler) classeur.annuler();
+    else classeur.retablir();
+  }
+
+  function restaurer(sauvetage: Sauvetage): void {
+    if (classeur.modifie && !confirm('Des modifications ne sont pas enregistrées. Les abandonner ?')) return;
+    classeur.restaurer(sauvetage);
+  }
+
+  function ecarter(sauvetage: Sauvetage): void {
+    const quand = decrireMoment(sauvetage.horodatage);
+    if (!confirm(`Supprimer définitivement le travail non enregistré du ${quand} ?`)) return;
+    classeur.ecarter(sauvetage);
+  }
 
   async function auChoixDeFichier(evenement: Event): Promise<void> {
     const champ = evenement.currentTarget as HTMLInputElement;
@@ -83,7 +138,7 @@
     evenement.preventDefault();
     if (!fichier || !nomEleve.trim()) return;
     ajouterEleve(fichier, { nom: nomEleve, prenom: prenomEleve });
-    classeur.toucher();
+    classeur.toucher({ libelle: `l'ajout de ${nomEleve.trim()} ${prenomEleve.trim()}`.trim() });
     nomEleve = '';
     prenomEleve = '';
   }
@@ -91,7 +146,7 @@
   /** Correction d'une identité mal encodée : aucun résultat n'est perdu. */
   function renommer(eleve: Eleve, identite: { nom: string; prenom: string }): boolean {
     if (!fichier || !renommerEleve(fichier, eleve.id, identite)) return false;
-    classeur.toucher();
+    classeur.toucher({ libelle: `le renommage de ${eleve.nom} ${eleve.prenom}` });
     return true;
   }
 
@@ -99,9 +154,11 @@
     const nom = `${eleve.nom} ${eleve.prenom}`;
     if (!fichier || !confirm(`Supprimer ${nom} et tous ses résultats ?`)) return;
     supprimerEleve(fichier, eleve.id);
-    classeur.toucher();
+    classeur.toucher({ libelle: `la suppression de ${nom}` });
   }
 </script>
+
+<svelte:window onkeydown={raccourciAnnulation} />
 
 <header class="barre no-print">
   <div class="marque">
@@ -147,6 +204,36 @@
       >
         <span class="pastille" aria-hidden="true"></span>
         {classeur.modifie ? 'Non enregistré' : 'Enregistré'}
+      </span>
+    {/if}
+
+    {#if fichier}
+      <!-- Annuler / rétablir : l'infobulle dit exactement ce qui sera défait. -->
+      <span class="historique" role="group" aria-label="Annuler ou rétablir">
+        <button
+          class="icone"
+          disabled={!classeur.aAnnuler}
+          onclick={() => classeur.annuler()}
+          title={classeur.aAnnuler ? `Annuler ${classeur.aAnnuler} (Ctrl+Z)` : 'Rien à annuler'}
+          aria-label={classeur.aAnnuler ? `Annuler ${classeur.aAnnuler}` : 'Rien à annuler'}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M9 14 4 9l5-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+          </svg>
+        </button>
+        <button
+          class="icone"
+          disabled={!classeur.aRetablir}
+          onclick={() => classeur.retablir()}
+          title={classeur.aRetablir ? `Rétablir ${classeur.aRetablir} (Ctrl+Y)` : 'Rien à rétablir'}
+          aria-label={classeur.aRetablir ? `Rétablir ${classeur.aRetablir}` : 'Rien à rétablir'}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="m15 14 5-5-5-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+          </svg>
+        </button>
       </span>
     {/if}
 
@@ -203,9 +290,18 @@
 </header>
 
 {#if classeur.message}
-  <div class="bandeau no-print" class:erreur={classeur.message.ton === 'erreur'} role="status">
+  <div
+    class="bandeau no-print"
+    class:erreur={classeur.message.ton === 'erreur'}
+    class:attention={classeur.message.ton === 'attention'}
+    role="status"
+  >
     <span class="pastille" aria-hidden="true"></span>
     <p>{classeur.message.texte}</p>
+    {#if classeur.message.action}
+      {@const action = classeur.message.action}
+      <button class="action compact" onclick={action.executer}>{action.libelle}</button>
+    {/if}
     <button class="discret compact" aria-label="Masquer ce message" onclick={() => (classeur.message = null)}>
       ×
     </button>
@@ -219,6 +315,30 @@
       <p class="chapeau">Les données de chaque classe vivent dans un
         fichier <code>.json</code> distinct, à conserver sur le Drive de l'école.
       </p>
+
+      {#if classeur.sauvetages.length > 0}
+        <!-- Filet de récupération (C2) : un travail qui n'a jamais atteint le
+             Drive passe avant tout le reste de l'accueil. -->
+        <section class="recuperation" aria-labelledby="titre-recuperation">
+          <h2 id="titre-recuperation">Travail non enregistré retrouvé</h2>
+          <p>
+            Ce navigateur a gardé une copie de modifications qui n'ont pas été enregistrées.
+            Restaurez-la, puis enregistrez le fichier et replacez-le sur le Drive.
+          </p>
+          <ul>
+            {#each classeur.sauvetages as sauvetage (sauvetage.id)}
+              <li>
+                <span class="quoi">
+                  <strong>{sauvetage.nomFichier}</strong>
+                  <span>{decrireMoment(sauvetage.horodatage)}{sauvetage.resume ? ` · ${sauvetage.resume}` : ''}</span>
+                </span>
+                <button class="principal" onclick={() => restaurer(sauvetage)}>Restaurer</button>
+                <button class="discret" onclick={() => ecarter(sauvetage)}>Supprimer</button>
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
 
       <p class="avertissement">
         <strong>Ne les confondez jamais :</strong> l'application se remplace à chaque mise à jour,
@@ -292,7 +412,7 @@
               const periode = fichier.periodes.find((p) => p.id === classeur.periodeCourante);
               if (periode) {
                 periode.date_bulletin = (e.currentTarget as HTMLInputElement).value;
-                classeur.toucher();
+                classeur.toucher({ libelle: `la date du bulletin ${periode.numero}` });
               }
             }}
           />
@@ -307,7 +427,7 @@
           {fichier}
           {eleves}
           periodeId={classeur.periodeCourante}
-          onModification={() => classeur.toucher()}
+          onModification={modifier}
         />
       {/if}
     {:else if vue === 'statistiques'}
@@ -315,7 +435,7 @@
         <EcranStatistiques {fichier} periodeId={classeur.periodeCourante} />
       {/if}
     {:else if vue === 'administration'}
-      <EcranAdministration {fichier} onModification={() => classeur.toucher()} />
+      <EcranAdministration {fichier} onModification={modifier} />
     {:else}
       <div class="colonnes">
         <aside class="no-print">
@@ -348,7 +468,7 @@
               {fichier}
               {eleves}
               periodeId={classeur.periodeCourante}
-              onModification={() => classeur.toucher()}
+              onModification={modifier}
             />
           {/if}
         </section>
@@ -496,6 +616,18 @@
     line-height: 1;
   }
 
+  .bandeau .action {
+    align-self: center;
+    font-size: var(--t-md);
+    line-height: normal;
+  }
+
+  .bandeau.attention {
+    border-bottom-color: var(--attention);
+    background: var(--attention-fond);
+    color: var(--attention);
+  }
+
   .bandeau.erreur {
     border-bottom-color: var(--alerte);
     background: var(--alerte-fond);
@@ -517,7 +649,71 @@
     }
   }
 
+  .historique {
+    display: inline-flex;
+    gap: var(--e1);
+  }
+
+  .icone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    padding: 0;
+  }
+
   /* ---------- Accueil ---------- */
+  .recuperation {
+    margin: var(--e5) 0 0;
+    padding: var(--e5);
+    border: 1px solid var(--attention);
+    border-radius: var(--r-lg);
+    background: var(--attention-fond);
+  }
+
+  .recuperation h2 {
+    margin: 0 0 var(--e2);
+    font-size: var(--t-lg);
+    color: var(--attention);
+  }
+
+  .recuperation p {
+    margin: 0 0 var(--e4);
+    font-size: var(--t-md);
+    line-height: 1.55;
+  }
+
+  .recuperation ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .recuperation li {
+    display: flex;
+    align-items: center;
+    gap: var(--e3);
+    padding: var(--e3) var(--e4);
+    border-radius: var(--r-md);
+    background: var(--surface);
+  }
+
+  .recuperation .quoi {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    font-size: var(--t-md);
+  }
+
+  .recuperation .quoi span {
+    color: var(--encre-douce);
+    font-size: var(--t-xs);
+  }
+
   .accueil {
     max-width: 54rem;
     margin: var(--e7) auto;

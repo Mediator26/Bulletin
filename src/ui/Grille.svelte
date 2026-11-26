@@ -27,6 +27,7 @@
   } from '../domaine/mutations.js';
   import { validerPoints } from '../domaine/validation.js';
   import ModificationTest from './ModificationTest.svelte';
+  import type { Action } from '../etat/historique.js';
 
   interface Props {
     fichier: FichierClasse;
@@ -34,7 +35,7 @@
     tests: Test[];
     /** Sépare les grilles empilées de l'écran de saisie : une zone par rubrique. */
     zone: string;
-    onModification: () => void;
+    onModification: (action?: Action) => void;
   }
 
   const { fichier, eleves, tests, zone, onModification }: Props = $props();
@@ -67,7 +68,7 @@
       : null;
   }
 
-  function saisir(evenement: Event, ligne: number, colonne: number): void {
+  function saisir(evenement: Event, ligne: number, colonne: number, action?: Action): void {
     const champ = evenement.currentTarget as HTMLInputElement;
     const test = tests[colonne];
     const eleve = eleves[ligne];
@@ -82,7 +83,12 @@
     const { [cle(ligne, colonne)]: _, ...reste } = erreurs;
     erreurs = reste;
     definirResultat(fichier, test.id, eleve.id, validation.valeur);
-    onModification();
+    onModification(
+      action ?? {
+        libelle: `la note de ${eleve.nom} ${eleve.prenom} en « ${test.libelle} »`,
+        groupe: `note:${test.id}:${eleve.id}`,
+      },
+    );
   }
 
   function marquer(ligne: number, colonne: number, statut: Statut): void {
@@ -93,7 +99,8 @@
     definirResultat(fichier, test.id, eleve.id, null, statut);
     const { [cle(ligne, colonne)]: _, ...reste } = erreurs;
     erreurs = reste;
-    onModification();
+    const quoi = statut === 'absent' ? "l'absence" : 'la dispense';
+    onModification({ libelle: `${quoi} de ${eleve.nom} ${eleve.prenom} en « ${test.libelle} »` });
   }
 
   /**
@@ -112,7 +119,7 @@
       if (!confirm(`Supprimer le test « ${test.libelle} » ? ${perte}`)) return;
     }
     supprimerTest(fichier, test.id);
-    onModification();
+    onModification({ libelle: `la suppression du test « ${test.libelle} »` });
   }
 
   /**
@@ -121,15 +128,21 @@
    * est accepté dès que le maximum est corrigé, sans avoir à le retaper.
    */
   function apresModification(test: Test): void {
+    // Une seule étape d'annulation pour la modification et les notes qu'elle
+    // a rendues acceptables : les annuler séparément n'aurait pas de sens.
+    const action: Action = {
+      libelle: `la modification du test « ${test.libelle} »`,
+      groupe: `test-modifie:${test.id}:${Date.now()}`,
+    };
+    onModification(action);
     const colonne = tests.findIndex((t) => t.id === test.id);
     for (const ligne of eleves.keys()) {
       if (!erreurs[cle(ligne, colonne)]) continue;
       const champ = document.getElementById(
         idCellule({ ligne, colonne }, zone),
       ) as HTMLInputElement | null;
-      if (champ) saisir({ currentTarget: champ } as unknown as Event, ligne, colonne);
+      if (champ) saisir({ currentTarget: champ } as unknown as Event, ligne, colonne, action);
     }
-    onModification();
   }
 
   function focaliser(cellule: Cellule): void {
@@ -160,8 +173,9 @@
       if (marque) {
         if (evenement.key === 'Delete' || evenement.key === 'Backspace') {
           evenement.preventDefault();
-          definirResultat(fichier, tests[colonne]!.id, eleves[ligne]!.id, null);
-          onModification();
+          const eleve = eleves[ligne]!;
+          definirResultat(fichier, tests[colonne]!.id, eleve.id, null);
+          onModification({ libelle: `l'effacement d'une case de ${eleve.nom} ${eleve.prenom}` });
           return;
         }
         // Un chiffre tapé sur une cellule marquée la remplace : « abs » puis « 8 »
@@ -221,6 +235,7 @@
               {@const statut = statutDe(test, eleve)}
               <td class:erreur={erreur} class:absent={statut === 'absent'} class:dispense={statut === 'dispense'}>
                 <input
+                  data-cellule
                   id={idCellule({ ligne, colonne }, zone)}
                   value={affichage(test, eleve)}
                   title={erreur ?? `${test.libelle} — maximum ${test.maximum}`}

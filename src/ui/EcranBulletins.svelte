@@ -18,12 +18,13 @@
   import { ECHELLE, type Echelle, type Eleve, type FichierClasse, type Id } from '../domaine/modele.js';
   import BulletinImprimable from './Bulletin.svelte';
   import ListeEleves from './ListeEleves.svelte';
+  import type { Action } from '../etat/historique.js';
 
   interface Props {
     fichier: FichierClasse;
     eleves: Eleve[];
     periodeId: Id;
-    onModification: () => void;
+    onModification: (action?: Action) => void;
   }
 
   const { fichier, eleves, periodeId, onModification }: Props = $props();
@@ -126,7 +127,10 @@
                 periodeId,
                 (e.currentTarget as HTMLTextAreaElement).value,
               );
-              onModification();
+              onModification({
+                libelle: `le commentaire de ${eleveActif.nom} ${eleveActif.prenom}`,
+                groupe: `commentaire:${eleveActif.id}:${periodeId}`,
+              });
             }}
           ></textarea>
         </label>
@@ -145,7 +149,9 @@
                   periodeId,
                   choix === '' ? null : (choix as Echelle),
                 );
-                onModification();
+                onModification({
+                  libelle: `la cote « ${rubrique.libelle} » de ${eleveActif.nom} ${eleveActif.prenom}`,
+                });
               }}
             >
               <option value="">— non coté —</option>

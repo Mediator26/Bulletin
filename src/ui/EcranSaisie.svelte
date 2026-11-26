@@ -16,12 +16,13 @@
   import { cheminLibelle, rubriquesSaisissables, SEPARATEUR_CHEMIN } from '../domaine/referentiel.js';
   import { ajouterTest, testsDeLaPeriode } from '../domaine/mutations.js';
   import Grille from './Grille.svelte';
+  import type { Action } from '../etat/historique.js';
 
   interface Props {
     fichier: FichierClasse;
     eleves: Eleve[];
     periodeId: Id;
-    onModification: () => void;
+    onModification: (action?: Action) => void;
   }
 
   const { fichier, eleves, periodeId, onModification }: Props = $props();
@@ -54,7 +55,7 @@
       maximum: maxima[rubrique_id] ?? 10,
     });
     libelles = { ...libelles, [rubrique_id]: '' };
-    onModification();
+    onModification({ libelle: `l'ajout du test « ${libelle} »` });
   }
 </script>
 
